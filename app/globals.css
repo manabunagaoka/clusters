@@ -1,3 +1,102 @@
+/* app/globals.css */
+
+/* ---- CSS reset (light) ---- */
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0}
+html,body{height:100%}
+body{line-height:1.5;-webkit-font-smoothing:antialiased}
+img,svg,video,canvas{display:block;max-width:100%}
+input,button,textarea,select{font:inherit}
+
+/* ---- Theme tokens ---- */
+:root{
+  --bg:#f7f8fb;
+  --panel:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e5e7eb;
+
+  --primary:#0284c7;
+  --primary-ink:#ffffff;
+
+  --success-bg:#f0fdf4;
+  --success-border:#bbf7d0;
+  --success-ink:#14532d;
+
+  --warn-bg:#fff7ed;
+  --warn-border:#fed7aa;
+  --warn-ink:#9a3412;
+}
+
+/* ---- App chrome ---- */
+.app-body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji,sans-serif;
+}
+
+/* Layout */
+.app-shell{display:flex;height:100vh}
+.sidebar{
+  width:240px;background:#f9fafb;border-right:1px solid var(--border);
+  padding:12px;display:flex;flex-direction:column;gap:12px
+}
+.brand{
+  font-weight:800;color:#059669;font-size:20px;letter-spacing:.2px;
+}
+.nav{display:grid;gap:6px}
+.nav-link{
+  display:block;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+  color:var(--text);text-decoration:none;background:#fff;
+}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+
+.content{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px
+}
+.main{flex:1;overflow:auto;padding:20px}
+
+/* ---- Primitives ---- */
+.card{
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.03)
+}
+.green-box{
+  margin-top:10px;background:var(--success-bg);border:1px solid var(--success-border);
+  color:var(--success-ink);border-radius:12px;padding:12px 14px
+}
+.hint{color:var(--muted);font-size:13px}
+.error{color:#b91c1c;font-size:13px}
+
+.input{
+  width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:#fff;margin:4px 0 8px
+}
+.textarea{min-height:120px}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;background:#fff;color:var(--text);cursor:pointer
+}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn[disabled],.btn.disabled{opacity:.5;cursor:not-allowed}
+
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid var(--border);
+  border-radius:999px;background:#fff;color:#334155;font-size:12px
+}
+
+.pre{
+  white-space:pre-wrap;background:#fff;border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;min-height:64px
+}
+
+/* Simple grid helper */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Loader keyframes (for LoaderDots if needed globally) */
+@keyframes pulse{0%,80%,100%{opacity:.25}40%{opacity:1}}
 :root {
   --background: #ffffff;
   --foreground: #171717;
