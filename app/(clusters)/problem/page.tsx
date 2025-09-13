@@ -1,51 +1,121 @@
-'use client'
-import { useState } from 'react'
-import { useAppStore } from '../store/useAppStore'
-import { Chip } from '../components/Chip'
-import { LoaderDots } from '../components/LoaderDots'
-import { StepNav } from '../components/StepNav'
+"use client";
 
-export default function Page() {
-  const { psText, psTags, setPSText, generatePS, extractPains } = useAppStore()
-  const [loadingPS, setLoadingPS] = useState(false)
-  const [loadingPains, setLoadingPains] = useState(false)
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { useAppStore } from '../store/useAppStore';
+import { canonicalTag } from '../lib/canonical';
 
-  async function onGenPS() {
-    setLoadingPS(true)
-    try { await generatePS() } finally { setLoadingPS(false) }
-  }
-  async function onExtract() {
-    setLoadingPains(true)
-    try { await extractPains() } finally { setLoadingPains(false) }
-  }
+function LoaderDots(){
+  const dot: React.CSSProperties = { width:10, height:10, borderRadius:999, background:'#2563eb', animation:'pulse 1.2s infinite ease-in-out' };
+  return (
+    <>
+      <span style={dot} />
+      <span style={{ ...dot, animationDelay:'.2s' as any }} />
+      <span style={{ ...dot, animationDelay:'.4s' as any }} />
+      <style>{`@keyframes pulse{0%,80%,100%{opacity:.25}40%{opacity:1}}`}</style>
+    </>
+  );
+}
+function Button({ children, onClick, disabled, primary=false }: any){
+  return <button onClick={onClick} disabled={disabled} className={`btn ${primary?'btn-primary':''} ${disabled?'disabled':''}`} style={{ marginRight:8 }}>{children}</button>;
+}
+
+export default function Page(){
+  const s = useAppStore();
+  const set = useAppStore.setState;
+
+  const canGeneratePS = Boolean(s.title && s.wizWho && s.wizStruggle && s.wizCurrent && s.wizGap && s.wizSuccess) && !s.busyPS;
+  const canExtract = Boolean(s.psText) && !s.busyExtract;
+  const canNext = s.psTags.length > 0 && !s.psBlocked;
+
+  const [typed, setTyped] = useState('');
+  const anchorChips = useMemo(()=> s.psTags.map(t => canonicalTag(t.tag)), [s.psTags]);
+
+  // One-shot typing AFTER Generate PS; no auto-typing on page load
+  useEffect(() => {
+    if (!s.psJustGenerated) return;
+    setTyped('');
+    const target = s.psText || '';
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setTyped(target.slice(0, i));
+      if (i >= target.length) {
+        clearInterval(id);
+        s.ackPSAnimation();
+      }
+    }, 12);
+    return () => clearInterval(id);
+  }, [s.psJustGenerated, s.psText, s]);
+
+  const showHint = !s.busyPS && !s.psText && !s.psJustGenerated;
+
+  const handleClear = () => {
+    set({
+      title:'', wizWho:'', wizStruggle:'', wizCurrent:'', wizGap:'', wizSuccess:'',
+      psText:'', psTags:[], psWarnings:undefined, psBlocked:false
+    });
+    setTyped('');
+  };
 
   return (
-    <div>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Problem</h1>
-      <label style={{ display: 'block', fontWeight: 500, marginBottom: 8 }}>Problem Statement</label>
-      <textarea className="input textarea" value={psText} onChange={(e) => setPSText(e.target.value)} rows={6} placeholder="Describe the problem..." />
+    <section>
+      <h2 style={{ marginTop:0 }}>Problem Statement</h2>
 
-      <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-        <button className="btn btn-primary" onClick={onGenPS} disabled={loadingPS}>
-          {loadingPS ? <LoaderDots /> : 'Generate PS'}
-        </button>
-        <button className="btn" onClick={onExtract} disabled={loadingPains}>
-          {loadingPains ? <LoaderDots /> : 'Extract Pains'}
-        </button>
-      </div>
+      <div className="card" style={{ marginTop:12 }}>
+        <div className="hint" style={{ marginBottom:8 }}>Tip: keep answers short and concrete. You can refine later.</div>
 
-      {psTags?.length ? (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>Anchors</div>
-          <div>
-            {psTags.map((t) => (
-              <Chip key={t}>{t}</Chip>
-            ))}
-          </div>
+        <label className="label">Project Name</label>
+        <input className="input" value={s.title} onChange={e=>set({ title:e.target.value })} placeholder="e.g., Nanny Pathways Study" />
+
+        <label className="label">1. Who is your customer?</label>
+        <input className="input" value={s.wizWho} onChange={e=>set({ wizWho:e.target.value })} placeholder="e.g., Working parents with young children" />
+
+        <label className="label">2. What’s their struggle?</label>
+        <input className="input" value={s.wizStruggle} onChange={e=>set({ wizStruggle:e.target.value })} placeholder="e.g., Trustworthy childcare is hard to find and expensive" />
+
+        <label className="label">3. What do they currently do?</label>
+        <input className="input" value={s.wizCurrent} onChange={e=>set({ wizCurrent:e.target.value })} placeholder="e.g., Share sitters; rely on grandparents; juggle schedules" />
+
+        <label className="label">4. What’s not working?</label>
+        <input className="input" value={s.wizGap} onChange={e=>set({ wizGap:e.target.value })} placeholder="e.g., Inconsistent caregivers; no verification; coordination overhead" />
+
+        <label className="label">5. What does success look like?</label>
+        <input className="input" value={s.wizSuccess} onChange={e=>set({ wizSuccess:e.target.value })} placeholder="e.g., Consistent vetted caregiver; transparent scheduling; human support" />
+
+        <div style={{ marginTop:8, display:'flex', gap:8 }}>
+          <Button primary disabled={!canGeneratePS} onClick={s.generatePS}>{s.busyPS ? <LoaderDots/> : 'Generate PS'}</Button>
+          <Button disabled={!s.title && !s.wizWho && !s.wizStruggle && !s.wizCurrent && !s.wizGap && !s.wizSuccess && !s.psText} onClick={handleClear}>Clear fields</Button>
         </div>
-      ) : null}
 
-      <StepNav next="/archetypes" />
-    </div>
-  )
+        {/* Generated paragraph area */}
+        <div className="pre" style={{ marginTop:10, minHeight:72 }}>
+          {showHint ? <span className="pre-hint">Click <b>Generate PS</b> to create a readable paragraph.</span> : (s.psJustGenerated ? typed : (s.psText || ''))}
+        </div>
+
+        <div style={{ marginTop:10 }}>
+          <Button primary disabled={!canExtract} onClick={s.extractPains}>{s.busyExtract ? <LoaderDots/> : 'Extract Pains'}</Button>
+        </div>
+
+        <div className="green-box" style={{ marginTop:10 }}>
+          <div style={{ fontWeight:800, marginBottom:4 }}>Anchors (pains)</div>
+          <div className="hint" style={{ marginBottom:8 }}>These are the assumed pains you’ll test against real interviews.</div>
+          {anchorChips.length === 0 ? (
+            <div className="hint">No anchors yet. Click Extract Pains.</div>
+          ) : (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {anchorChips.map((t,i)=><span key={`${t}-${i}`} className="chip">{t}</span>)}
+            </div>
+          )}
+          {s.psWarnings && <div className="hint" style={{ color:'#b45309', marginTop:6 }}>{s.psWarnings}</div>}
+          {s.psBlocked && <div className="hint" style={{ color:'#b45309', marginTop:6 }}>Please refine the anchors to continue.</div>}
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:12 }}>
+          <Link className={`btn ${canNext ? 'btn-primary' : 'disabled'}`} href={canNext ? '/archetypes' : '#'} aria-disabled={!canNext}>NEXT</Link>
+          {!canNext && <span className="hint">Generate &amp; extract first.</span>}
+        </div>
+      </div>
+    </section>
+  );
 }

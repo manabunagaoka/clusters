@@ -139,3 +139,135 @@ a {
     color-scheme: dark;
   }
 }
+
+/* ===== Readability: labels & placeholders ===== */
+.label {
+  display:block;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+  margin:10px 0 6px;
+}
+.input::placeholder { color:#9aa3b2; }
+
+/* ===== Topbar toggle button ===== */
+.nav-toggle{
+  appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);
+  border-radius:8px;padding:6px 10px;cursor:pointer
+}
+
+/* ===== Mobile sidebar behavior ===== */
+@media (max-width: 768px){
+  .sidebar{
+    position:fixed;left:0;top:0;height:100vh;width:260px;z-index:40;
+    transform:translateX(-100%);transition:transform .2s ease;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .content{ position:relative; }
+  .overlay{
+    position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:30;
+  }
+}
+
+/* ===== Pre block hint style ===== */
+.pre-hint{ color:var(--muted); font-size:13px; }
+
+/* ===== Sidebar collapsed (desktop) ===== */
+.sidebar.collapsed{ width:64px }
+.sidebar .brand-row{ display:flex; align-items:center; justify-content:space-between; gap:8px }
+.sidebar .brand{ font-weight:800; color:#059669; font-size:20px; letter-spacing:.2px }
+.sidebar .tagline{ color:#94a3b8; font-size:12px; }
+.sidebar .collapse-btn{
+  appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);
+  border-radius:8px;padding:6px;cursor:pointer;display:flex;align-items:center;justify-content:center
+}
+
+/* Label visibility in collapsed mode */
+.sidebar.collapsed .tagline,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .footer-text { display:none }
+
+/* Nav links show icon + label; center icon when collapsed */
+.nav-link{ display:flex; align-items:center; gap:10px; }
+.nav-icon{ width:18px; height:18px; }
+
+.sidebar.collapsed .nav-link{ justify-content:center; }
+.sidebar.collapsed .nav-icon{ margin:0 }
+
+/* Footer */
+.sidebar-footer{ margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px }
+.footer-text{ color:#94a3b8; font-size:12px }
+
+/* Mobile overlay already handled; keep active styles as-is */
+
+/* ===== Topbar title ===== */
+.topbar-title{
+  font-weight:700; color:var(--text);
+  letter-spacing:.2px; font-size:14px;
+}
+
+/* ===== Sidebar brand row + collapse chevron ===== */
+.sidebar .brand-row{
+  display:flex; align-items:center; gap:8px;
+}
+.sidebar .tagline{ color:#94a3b8; font-size:12px }
+.sidebar .collapse-btn{
+  appearance:none; border:1px solid var(--border); background:#fff; color:var(--text);
+  width:32px; height:32px; border-radius:8px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Collapsed mode: hide tagline and nav labels */
+.sidebar.collapsed .tagline,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .footer-text{ display:none }
+
+/* Nav rows use icon + label; center icon when collapsed */
+.nav-link{ display:flex; align-items:center; gap:12px; padding:8px 10px }
+.nav-icon{ width:18px; height:18px }
+.sidebar.collapsed .nav-link{ justify-content:center }
+.sidebar.collapsed .nav-icon{ margin:0 }
+
+/* Footer row */
+.sidebar-footer{
+  margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px
+}
+.footer-text{ color:#94a3b8; font-size:12px }
+
+/* Mobile drawer already styled; keep .overlay as is */
+
+/* ===== Top header (full width) ===== */
+.topbar-title {
+  display:flex; align-items:center; gap:10px;
+  font-size:14px; letter-spacing:.2px;
+}
+.topbar-title .brand-green { color:#059669; font-weight:800; font-size:20px; }
+.topbar-title .subtitle { color:#64748b; font-weight:600; }
+
+/* ===== Subtle active tab look (original light highlight) ===== */
+.nav-link { display:flex; align-items:center; gap:12px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); text-decoration:none; }
+.nav-link.active { background:#eef2ff; border-color:#c7d2fe; }
+
+/* ===== Sidebar: collapse button row UNDER header, aligned to icon column ===== */
+.collapse-row {
+  display:flex; justify-content:flex-start; padding:6px 10px 4px;  /* same left padding as nav-link */
+}
+.collapse-btn {
+  appearance:none; border:1px solid var(--border); background:#fff; color:var(--text);
+  width:32px; height:32px; border-radius:8px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Collapsed state: hide nav labels and keep icons centered */
+.sidebar.collapsed { width:64px; }
+.sidebar.collapsed .nav-label { display:none; }
+.sidebar.collapsed .nav-link { justify-content:center; }
+.sidebar.collapsed .collapse-row { justify-content:center; padding:6px 0 4px; }
+
+/* Bottom account row (subtle) */
+.sidebar-footer { margin-top:auto; }
+.sidebar-footer .account-link { opacity:.9; }
+.sidebar-footer .account-link:hover { opacity:1; }
+
+/* Mobile drawer remains as in your build; no duplicate toggles */

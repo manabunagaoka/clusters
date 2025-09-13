@@ -1,6 +1,11 @@
 // Simple, domain-agnostic helpers
 export function canonicalTag(tag: string): string {
-  return (tag || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '')
+  // snake_case canonicalization
+  return (tag || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[-\s]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
 }
 
 export function humanizeTag(tag: string): string {

@@ -1,3 +1,8 @@
+export type Pain = {
+  tag: string
+  why?: string
+  confidence?: number
+}
 export type Problem = {
   text: string
   tags: string[]
@@ -35,8 +40,24 @@ export type Insights = {
 }
 
 export type AppState = {
+  // Wizard fields
+  title: string
+  wizWho: string
+  wizStruggle: string
+  wizCurrent: string
+  wizGap: string
+  wizSuccess: string
+
+  // Problem statement and pains
   psText: string
-  psTags: string[]
+  psTags: Pain[]
+  psWarnings?: string
+  psBlocked?: boolean
+  psJustGenerated?: boolean
+  busyPS?: boolean
+  busyExtract?: boolean
+
+  // Rest of the flow
   notes: string
   archetypes: Archetype[]
   result: Analysis | null
