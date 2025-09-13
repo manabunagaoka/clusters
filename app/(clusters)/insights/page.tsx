@@ -16,20 +16,22 @@ export default function Page() {
   return (
     <StepGuard allow={canSeeInsights()} redirectTo="/metrics">
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Insights</h1>
-        <div>
-          <button onClick={onGen} disabled={loading} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <h2 className="page-title">Insights</h2>
+        <div className="card" style={{ marginTop:12 }}>
+          <button onClick={onGen} disabled={loading} className="btn">
             {loading ? <LoaderDots /> : 'Generate Insights'}
           </button>
         </div>
 
         {insights && (
-          <div style={{ marginTop: 16 }}>
-            <Field label="Summary" value={insights.summary} />
-            <Field label="Focus Now" value={Array.isArray(insights.focusNow) ? insights.focusNow.join('; ') : insights.focusNow} />
-            <Field label="Two Experiments" value={insights.twoExperiments.join('; ')} />
-            <Field label="Tighten Data" value={insights.tightenData.join('; ')} />
-            <Field label="Why This Makes Sense" value={insights.whyThisMakesSense} />
+          <div className="card" style={{ marginTop: 12 }}>
+            <div className="card-body">
+              <Field label="Summary" value={insights.summary} />
+              <Field label="Focus Now" value={Array.isArray(insights.focusNow) ? insights.focusNow.join('; ') : insights.focusNow} />
+              <Field label="Two Experiments" value={insights.twoExperiments.join('; ')} />
+              <Field label="Tighten Data" value={insights.tightenData.join('; ')} />
+              <Field label="Why This Makes Sense" value={insights.whyThisMakesSense} />
+            </div>
           </div>
         )}
       </div>

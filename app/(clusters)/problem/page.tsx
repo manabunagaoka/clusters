@@ -75,10 +75,12 @@ export default function Page(){
 
   return (
     <section>
-      <h2 style={{ marginTop:0 }}>Problem Statement</h2>
+      <h2 className="page-title">Problem Statement</h2>
 
       <div className="card" style={{ marginTop:12 }}>
-        <div className="hint" style={{ marginBottom:8 }}>Tip: keep answers short and concrete. You can refine later.</div>
+        <div className="card-body" style={{ paddingBottom:8 }}>
+          <div className="hint">Tip: keep answers short and concrete. You can refine later.</div>
+        </div>
 
         <label className="label">Project Name</label>
         <input className="input" value={s.title} onChange={e=>set({ title:e.target.value })} placeholder="e.g., Nanny Pathways Study" />

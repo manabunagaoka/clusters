@@ -19,16 +19,16 @@ export default function Page() {
   return (
     <StepGuard allow={canRunAnalysis()} redirectTo="/archetypes">
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Quality Metrics & Clusters</h1>
-        <div>
-          <button onClick={onRun} disabled={loading} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <h2 className="page-title">Quality Metrics & Clusters</h2>
+        <div className="card" style={{ marginTop:12 }}>
+          <button onClick={onRun} disabled={loading} className="btn">
             {loading ? <LoaderDots /> : 'Run Analysis'}
           </button>
         </div>
 
         {result && (
-          <div style={{ marginTop: 16 }}>
-            <h2 style={{ fontWeight: 600, marginBottom: 8 }}>Readiness</h2>
+          <div className="card" style={{ marginTop: 12 }}>
+            <div className="card-title">Readiness</div>
             <div style={{ marginBottom: 8 }}>
               <ReadinessMeter value={r?.overall || 0} />
             </div>
@@ -39,13 +39,13 @@ export default function Page() {
               <Tile label="Action" value={r?.action || 0} />
             </div>
             {(r?.overall || 0) < 0.5 && (
-              <div style={{ marginTop: 12, color: '#7C2D12', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 6, padding: 8 }}>
+              <div className="green-box" style={{ marginTop: 8 }}>
                 Opportunity: tighten evidence before scaling decisions.
               </div>
             )}
 
-            <div style={{ marginTop: 16 }}>
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Clusters</h3>
+            <div style={{ marginTop: 12 }}>
+              <div className="card-title" style={{ marginBottom: 8 }}>Clusters</div>
               <ul style={{ paddingLeft: 16 }}>
                 {result.clusters.map((c) => (
                   <li key={c.id} style={{ marginBottom: 6 }}>

@@ -282,3 +282,26 @@ button.nav-link{appearance:none}
 /* Account row matches header height */
 .account-row{ height:56px; padding:0 10px; display:flex; align-items:center }
 .sidebar.collapsed .account-row{ justify-content:center }
+
+/* ===== Instructions: Flow list styling ===== */
+.flow-list{ list-style:none; counter-reset:flowstep; padding-left:0; margin:0; color:#334155; font-size:14px; line-height:1.6 }
+.flow-list > li{ position:relative; padding-left:32px; margin:6px 0; counter-increment:flowstep }
+.flow-list > li::before{
+  content: counter(flowstep);
+  position:absolute; left:0; top:2px; width:22px; height:22px; border-radius:9999px;
+  background: var(--primary); color: var(--primary-ink);
+  display:inline-flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:12px; line-height:1;
+}
+
+/* Card section title (shared) */
+.card-title{ font-size:18px; font-weight:800; color:var(--text); margin-bottom:8px }
+
+/* Comfortable spacing for nested lists inside flow items */
+.flow-list ul{ margin-top:6px; padding-left:18px }
+
+/* Page heading */
+.page-title{ margin-top:0; font-size:20px; font-weight:800; color:var(--text) }
+
+/* Default card body copy */
+.card-body{ color:#334155; font-size:14px; line-height:1.6 }
