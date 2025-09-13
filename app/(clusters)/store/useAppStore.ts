@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
-import type { AppState, Archetype, Analysis, Insights, Pain } from '../lib/types'
+import type { AppState, Archetype, Analysis, Insights, Pain, PsChip } from '../lib/types'
 
 const DEFAULT_ANCHORS = ['confusing', 'slow', 'manual', 'inconsistent', 'risky', 'expensive', 'time-consuming']
 
@@ -122,17 +122,31 @@ export const useAppStore = create<AppState & {
       if (!psText) return
       set({ busyExtract: true, psWarnings: undefined, psBlocked: false })
       try {
-        const res = await fetchJsonSafe<{ pains: Pain[]; warnings?: unknown; block_next?: boolean }>(
+        type RawPain = { tag?: string; label?: string; why?: string; confidence?: number };
+        const res = await fetchJsonSafe<{ pains: RawPain[]; warnings?: unknown; block_next?: boolean }>(
           '/api/pains/extract',
           { method: 'POST', body: JSON.stringify({ problem_statement: psText }) }
         )
         if (res.ok && Array.isArray(res.data?.pains)) {
-          // Ensure canonical snake_case tags
-          const pains: Pain[] = res.data!.pains as Pain[]
-          const tags: Pain[] = pains
-            .map((p) => ({ tag: canonicalTag(p.tag) }))
-            .filter((p): p is Pain => Boolean(p.tag))
-          set({ psTags: tags, psWarnings: res.data?.warnings ? 'Check warnings' : undefined, psBlocked: !!res.data?.block_next })
+          const pains = Array.isArray(res.data?.pains) ? res.data.pains : [];
+
+          // Keep the model's label, canonicalize tag lightly
+          const tags = pains
+            .map((p: RawPain)=>({ tag: canonicalTag(p.tag || ''), label: (p.label || '').toString() }))
+            .filter((p: PsChip)=> p.tag);
+
+          // Policy: warn & block when 5 or more
+          const tooMany = tags.length >= 5;
+          const warnText = tooMany
+            ? `There are too many anchors (pains/challenges) detected (${tags.length}). Narrow your focus for a clearer Problem Statement.`
+            : (res.data?.warnings ? 'Check anchors for specificity.' : undefined);
+
+          set({
+            psTags: tags,
+            psWarnings: warnText,
+            psBlocked: tooMany || !!res.data?.block_next,
+            archetypes:[], result:null, insights:null
+          });
         } else {
           const tags = inferTagsFromText(psText)
           set({ psTags: tags.map(t => ({ tag: canonicalTag(t) })), psWarnings: undefined, psBlocked: false })

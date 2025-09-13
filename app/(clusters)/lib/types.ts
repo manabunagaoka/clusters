@@ -3,6 +3,8 @@ export type Pain = {
   why?: string
   confidence?: number
 }
+
+export type PsChip = { tag: string; label?: string }
 export type Problem = {
   text: string
   tags: string[]
@@ -50,7 +52,7 @@ export type AppState = {
 
   // Problem statement and pains
   psText: string
-  psTags: Pain[]
+  psTags: PsChip[]
   psWarnings?: string
   psBlocked?: boolean
   psJustGenerated?: boolean
