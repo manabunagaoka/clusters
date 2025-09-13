@@ -23,20 +23,20 @@ export default function Page() {
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Problem</h1>
       <label style={{ display: 'block', fontWeight: 500, marginBottom: 8 }}>Problem Statement</label>
-      <textarea value={psText} onChange={(e) => setPSText(e.target.value)} rows={6} style={{ width: '100%', padding: 12, border: '1px solid #e5e7eb', borderRadius: 6 }} placeholder="Describe the problem..." />
+      <textarea className="input textarea" value={psText} onChange={(e) => setPSText(e.target.value)} rows={6} placeholder="Describe the problem..." />
 
       <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-        <button onClick={onGenPS} disabled={loadingPS} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <button className="btn btn-primary" onClick={onGenPS} disabled={loadingPS}>
           {loadingPS ? <LoaderDots /> : 'Generate PS'}
         </button>
-        <button onClick={onExtract} disabled={loadingPains} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <button className="btn" onClick={onExtract} disabled={loadingPains}>
           {loadingPains ? <LoaderDots /> : 'Extract Pains'}
         </button>
       </div>
 
       {psTags?.length ? (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>Anchors</div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>Anchors</div>
           <div>
             {psTags.map((t) => (
               <Chip key={t}>{t}</Chip>

@@ -18,7 +18,7 @@ function inferTagsFromText(text: string): string[] {
 function stubArchetypes(notes: string, anchors: string[]): Archetype[] {
   const lines = (notes || '').split(/\n+/).map((l) => l.trim()).filter(Boolean)
   const aligned = lines.filter((l) => anchors.some((a) => l.toLowerCase().includes(a)))
-  const groups = anchors.slice(0, 3).map((a, i) => ({ key: a, quotes: aligned.filter((q) => q.toLowerCase().includes(a)) }))
+  const groups = anchors.slice(0, 3).map((a) => ({ key: a, quotes: aligned.filter((q) => q.toLowerCase().includes(a)) }))
   return groups.map((g, i) => ({
     id: `a${i+1}`,
     name: humanizeTag(g.key),
@@ -96,7 +96,7 @@ export const useAppStore = create<AppState & {
     async generateArchetypes() {
       const { notes, psTags } = get()
       const res = await fetchJsonSafe<Archetype[]>('/api/archetypes', { method: 'POST', body: JSON.stringify({ notes, anchors: psTags }) })
-      const data = res.ok && Array.isArray(res.data) ? res.data as any : stubArchetypes(notes, psTags)
+  const data = res.ok && Array.isArray(res.data) ? (res.data as Archetype[]) : stubArchetypes(notes, psTags)
       set({ archetypes: data })
     },
 
