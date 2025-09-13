@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { LoaderDots } from '../components/LoaderDots'
 import { StepGuard } from '../components/StepGuard'
+import { StepNav } from '../components/StepNav'
 
 export default function Page() {
   const { insights, getInsights, canSeeInsights } = useAppStore()
@@ -15,35 +16,47 @@ export default function Page() {
 
   return (
     <StepGuard allow={canSeeInsights()} redirectTo="/metrics">
-      <div>
-        <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Insights</h1>
-        <div>
-          <button onClick={onGen} disabled={loading} style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+      <div className="card">
+        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 16 }}>Insights</h1>
+        
+        <div style={{ marginBottom: 24 }}>
+          <button 
+            className={`btn btn-primary ${loading ? 'disabled' : ''}`}
+            onClick={onGen} 
+            disabled={loading}
+          >
             {loading ? <LoaderDots /> : 'Generate Insights'}
           </button>
         </div>
 
         {insights && (
-          <div style={{ marginTop: 16 }}>
-            <Field label="Summary" value={insights.summary} />
-            <Field label="Focus Now" value={Array.isArray(insights.focusNow) ? insights.focusNow.join('; ') : insights.focusNow} />
-            <Field label="Two Experiments" value={insights.twoExperiments.join('; ')} />
-            <Field label="Tighten Data" value={insights.tightenData.join('; ')} />
-            <Field label="Why This Makes Sense" value={insights.whyThisMakesSense} />
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: 'grid', gap: 20 }}>
+              <Field label="Summary" value={insights.summary} />
+              <Field label="Focus Now" value={Array.isArray(insights.focusNow) ? insights.focusNow : [insights.focusNow]} />
+              <Field label="Two Experiments" value={insights.twoExperiments} />
+              <Field label="Tighten Data" value={insights.tightenData} />
+              <Field label="Why This Makes Sense" value={insights.whyThisMakesSense} />
+            </div>
           </div>
         )}
+
+        <StepNav back="/metrics" />
       </div>
     </StepGuard>
   )
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: string | string[] }) {
+  const isArray = Array.isArray(value)
+  const text = isArray ? value.join(' • ') : value || ''
   // Convert any decimals in the text to percents
-  const text = (value || '').replace(/(?<!\d)(0?\.[0-9]{1,2})(?!\d)/g, (m) => `${Math.round(parseFloat(m) * 100)}%`)
+  const formattedText = text.replace(/(?<!\d)(0?\.[0-9]{1,2})(?!\d)/g, (m) => `${Math.round(parseFloat(m) * 100)}%`)
+  
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 12, color: '#6B7280' }}>{label}</div>
-      <div>{text}</div>
+    <div className="card" style={{ margin: 0 }}>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--primary)' }}>{label}</div>
+      <div style={{ lineHeight: 1.5 }}>{formattedText}</div>
     </div>
   )
 }
