@@ -10,14 +10,29 @@ function LoaderDots(){
   return (
     <>
       <span style={dot} />
-      <span style={{ ...dot, animationDelay:'.2s' as any }} />
-      <span style={{ ...dot, animationDelay:'.4s' as any }} />
+      <span style={{ ...dot, animationDelay:'.2s' as React.CSSProperties['animationDelay'] }} />
+      <span style={{ ...dot, animationDelay:'.4s' as React.CSSProperties['animationDelay'] }} />
       <style>{`@keyframes pulse{0%,80%,100%{opacity:.25}40%{opacity:1}}`}</style>
     </>
   );
 }
-function Button({ children, onClick, disabled, primary=false }: any){
-  return <button onClick={onClick} disabled={disabled} className={`btn ${primary?'btn-primary':''} ${disabled?'disabled':''}`} style={{ marginRight:8 }}>{children}</button>;
+type ButtonProps = {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+};
+function Button({ children, onClick, disabled, primary=false }: ButtonProps){
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`btn ${primary?'btn-primary':''} ${disabled?'disabled':''}`}
+      style={{ marginRight:8 }}
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function Page(){

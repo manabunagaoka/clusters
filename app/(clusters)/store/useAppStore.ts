@@ -128,9 +128,11 @@ export const useAppStore = create<AppState & {
         )
         if (res.ok && Array.isArray(res.data?.pains)) {
           // Ensure canonical snake_case tags
-          const pains = Array.isArray(res.data?.pains) ? res.data!.pains : []
-          const tags = pains.map((p: any)=>({ tag: canonicalTag((p as any).tag) })).filter((p: any)=>p.tag)
-          set({ psTags: tags as unknown as Pain[], psWarnings: res.data?.warnings ? 'Check warnings' : undefined, psBlocked: !!res.data?.block_next })
+          const pains: Pain[] = res.data!.pains as Pain[]
+          const tags: Pain[] = pains
+            .map((p) => ({ tag: canonicalTag(p.tag) }))
+            .filter((p): p is Pain => Boolean(p.tag))
+          set({ psTags: tags, psWarnings: res.data?.warnings ? 'Check warnings' : undefined, psBlocked: !!res.data?.block_next })
         } else {
           const tags = inferTagsFromText(psText)
           set({ psTags: tags.map(t => ({ tag: canonicalTag(t) })), psWarnings: undefined, psBlocked: false })

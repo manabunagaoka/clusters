@@ -36,15 +36,16 @@ input,button,textarea,select{font:inherit}
 }
 
 /* Layout */
-.app-shell{display:flex;height:100vh}
+.app-shell{display:flex;height:calc(100vh - 56px)}
 .sidebar{
   width:240px;background:#f9fafb;border-right:1px solid var(--border);
-  padding:12px;display:flex;flex-direction:column;gap:12px
+  padding:6px 12px 0;display:flex;flex-direction:column;gap:0;
+  transition:width .2s ease, transform .2s ease
 }
 .brand{
   font-weight:800;color:#059669;font-size:20px;letter-spacing:.2px;
 }
-.nav{display:grid;gap:6px}
+.nav{display:grid;gap:6px;flex:1}
 .nav-link{
   display:block;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
   color:var(--text);text-decoration:none;background:#fff;
@@ -159,14 +160,14 @@ a {
 /* ===== Mobile sidebar behavior ===== */
 @media (max-width: 768px){
   .sidebar{
-    position:fixed;left:0;top:0;height:100vh;width:260px;z-index:40;
+    position:fixed;left:0;top:56px;height:calc(100vh - 56px);width:260px;z-index:40;
     transform:translateX(-100%);transition:transform .2s ease;
     box-shadow:0 8px 24px rgba(0,0,0,.12);
   }
   .sidebar.open{ transform:translateX(0); }
   .content{ position:relative; }
   .overlay{
-    position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:30;
+    position:fixed;top:56px;left:0;right:0;bottom:0;background:rgba(15,23,42,.35);z-index:30;
   }
 }
 
@@ -231,5 +232,53 @@ button.nav-link{appearance:none}
 .sidebar-footer{margin-top:auto}
 .sidebar-footer .account-link{opacity:.9}
 .sidebar-footer .account-link:hover{opacity:1}
-
 /* Mobile drawer stays as-is; hamburger is only on mobile */
+/* Mobile drawer remains as in your build; no duplicate toggles */
+
+/* ===== Full-width topbar with left-aligned title ===== */
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-start;padding:0 16px;
+}
+.topbar-title{display:flex;align-items:center;gap:10px}
+.topbar-title .brand-green{color:#059669;font-weight:800;font-size:20px;letter-spacing:.2px}
+.topbar-title .subtitle{color:#64748b;font-weight:600;font-size:14px}
+
+/* ===== Subtle tab style (shared by links and buttons) ===== */
+.nav{display:grid;gap:6px}
+.nav-link{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--text);text-decoration:none;cursor:pointer
+}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+.nav-icon{width:18px;height:18px}
+
+/* Make <button> tabs identical to <a>/<Link> tabs */
+button.nav-link{appearance:none}
+
+/* Collapsed state alignment */
+.sidebar.collapsed{width:64px}
+.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-link{justify-content:center}
+.sidebar.collapsed .nav-icon{margin:0}
+
+/* Bottom account row (subtle) */
+.sidebar-footer{margin-top:auto}
+.sidebar-footer .account-link{opacity:.9}
+.sidebar-footer .account-link:hover{opacity:1}
+/* Mobile drawer stays as-is; hamburger is only on mobile */
+
+/* ===== New primitives: plain rows, header toggle, separators ===== */
+.plain-row{
+  display:flex;align-items:center;gap:12px;padding:8px 10px;background:transparent;border:none;cursor:pointer;color:var(--text);
+}
+.toggle-row{ height:56px; width:100%; justify-content:flex-start; padding:0 10px }
+.sidebar.collapsed .toggle-row{ justify-content:center }
+.plain-row:focus{outline:none}
+.header-toggle{ appearance:none; border:none; background:transparent; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center }
+.section-sep{ height:1px; background:var(--border); margin:4px 0 }
+
+/* Account row matches header height */
+.account-row{ height:56px; padding:0 10px; display:flex; align-items:center }
+.sidebar.collapsed .account-row{ justify-content:center }
