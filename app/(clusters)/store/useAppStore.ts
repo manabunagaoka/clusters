@@ -38,7 +38,7 @@ function stubAnalysis(archetypes: Archetype[]): Analysis {
       clear: Math.min(1, density * 0.9 + 0.05),
       action: Math.min(1, density * 0.8 + 0.1),
     },
-    clusters: archetypes.map((a, i) => ({ id: a.id, label: a.name, tags: a.tags, size: a.quotes.length || 1 })),
+  clusters: archetypes.map((a) => ({ id: a.id, label: a.name, tags: a.tags, size: a.quotes.length || 1 })),
   }
 }
 
