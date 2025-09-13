@@ -1,9 +1,8 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { canonicalTag } from '../lib/canonical';
 
 function LoaderDots(){
   const dot: React.CSSProperties = { width:10, height:10, borderRadius:999, background:'#2563eb', animation:'pulse 1.2s infinite ease-in-out' };
@@ -44,7 +43,6 @@ export default function Page(){
   const canNext = s.psTags.length > 0 && !s.psBlocked;
 
   const [typed, setTyped] = useState('');
-  const anchorChips = useMemo(()=> s.psTags.map(t => canonicalTag(t.tag)), [s.psTags]);
 
   // One-shot typing AFTER Generate PS; no auto-typing on page load
   useEffect(() => {
@@ -117,11 +115,15 @@ export default function Page(){
         <div className="green-box" style={{ marginTop:10 }}>
           <div style={{ fontWeight:800, marginBottom:4 }}>Anchors (pains)</div>
           <div className="hint" style={{ marginBottom:8 }}>These are the assumed pains you’ll test against real interviews.</div>
-          {anchorChips.length === 0 ? (
+          {s.psTags.length === 0 ? (
             <div className="hint">No anchors yet. Click Extract Pains.</div>
           ) : (
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {anchorChips.map((t,i)=><span key={`${t}-${i}`} className="chip">{t}</span>)}
+              {s.psTags.map((p,i)=>(
+                <span key={`${p.tag}-${i}`} className="chip" title={p.label || p.tag}>
+                  {p.tag}
+                </span>
+              ))}
             </div>
           )}
           {s.psWarnings && <div className="hint" style={{ color:'#b45309', marginTop:6 }}>{s.psWarnings}</div>}
