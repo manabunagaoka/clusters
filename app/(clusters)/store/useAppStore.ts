@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
-import type { AppState, Archetype, Analysis, Insights } from '../lib/types'
+import type { AppState, Archetype, Analysis, Insights, Pain } from '../lib/types'
 
 const DEFAULT_ANCHORS = ['confusing', 'slow', 'manual', 'inconsistent', 'risky', 'expensive', 'time-consuming']
 
@@ -43,7 +43,8 @@ function stubAnalysis(archetypes: Archetype[]): Analysis {
 }
 
 function stubInsights(state: AppState): Insights {
-  const top = state.psTags[0] ? humanizeTag(state.psTags[0]) : 'Pain'
+  const topRaw = (state.psTags && state.psTags[0]) ? state.psTags[0].tag : 'Pain'
+  const top = humanizeTag(topRaw)
   return {
     summary: `Students are running into ${top.toLowerCase()} in their current flow. Prioritize reducing friction before adding features.`,
     focusNow: [`Reduce ${top.toLowerCase()} in the first-run experience`],
@@ -64,13 +65,28 @@ export const useAppStore = create<AppState & {
   generateArchetypes: () => Promise<void>
   runAnalysis: () => Promise<void>
   getInsights: () => Promise<void>
+  ackPSAnimation: () => void
+  resetAll: () => void
   canGoArchetypes: () => boolean
   canRunAnalysis: () => boolean
   canSeeInsights: () => boolean
 }>()(
   persist((set, get) => ({
-    psText: '',
+    // Wizard defaults
+    title: '',
+    wizWho: '',
+    wizStruggle: '',
+    wizCurrent: '',
+    wizGap: '',
+    wizSuccess: '',
+
+  psText: '',
     psTags: [],
+    psWarnings: undefined,
+    psBlocked: false,
+  psJustGenerated: false,
+    busyPS: false,
+    busyExtract: false,
     notes: '',
     archetypes: [],
     result: null,
@@ -80,23 +96,57 @@ export const useAppStore = create<AppState & {
     setPSText: (v) => set({ psText: v }),
 
     async generatePS() {
-      const { psText } = get()
-      const res = await fetchJsonSafe<{ text: string }>('/api/ps', { method: 'POST', body: JSON.stringify({ text: psText }) })
-      const text = res.ok && res.data?.text ? res.data.text : (psText || '').trim()
-      set({ psText: text })
+      const { title, wizWho, wizStruggle, wizCurrent, wizGap, wizSuccess } = get()
+      if (!(title && wizWho && wizStruggle && wizCurrent && wizGap && wizSuccess)) return
+      // clear prior outputs and set flag for typing animation
+      set({ busyPS: true, psText: '', psTags: [], psWarnings: undefined, psBlocked: false, psJustGenerated: false })
+      try {
+        // Prefer new API route; fallback to local formatting if unavailable
+        const res = await fetchJsonSafe<{ problemStatement: string }>(
+          '/api/generate-problem',
+          {
+            method: 'POST',
+            body: JSON.stringify({ projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess })
+          }
+        )
+        const fallback = `${wizWho} are trying to make progress on “${wizStruggle}”. They currently ${wizCurrent}. What’s not working is that ${wizGap}. Success looks like ${wizSuccess}.`
+        const text = res.ok && res.data?.problemStatement ? res.data.problemStatement : fallback
+        set({ psText: text, psJustGenerated: true })
+      } finally {
+        set({ busyPS: false })
+      }
     },
 
     async extractPains() {
       const { psText } = get()
-      const res = await fetchJsonSafe<{ tags: string[] }>('/api/pains', { method: 'POST', body: JSON.stringify({ text: psText }) })
-      const tags = res.ok && Array.isArray(res.data?.tags) && res.data!.tags.length ? res.data!.tags : inferTagsFromText(psText)
-      set({ psTags: unique(tags.map(canonicalTag)) })
+      if (!psText) return
+      set({ busyExtract: true, psWarnings: undefined, psBlocked: false })
+      try {
+        const res = await fetchJsonSafe<{ pains: Pain[]; warnings?: unknown; block_next?: boolean }>(
+          '/api/pains/extract',
+          { method: 'POST', body: JSON.stringify({ problem_statement: psText }) }
+        )
+        if (res.ok && Array.isArray(res.data?.pains)) {
+          // Ensure canonical snake_case tags
+          const pains: Pain[] = res.data!.pains as Pain[]
+          const tags: Pain[] = pains
+            .map((p) => ({ tag: canonicalTag(p.tag) }))
+            .filter((p): p is Pain => Boolean(p.tag))
+          set({ psTags: tags, psWarnings: res.data?.warnings ? 'Check warnings' : undefined, psBlocked: !!res.data?.block_next })
+        } else {
+          const tags = inferTagsFromText(psText)
+          set({ psTags: tags.map(t => ({ tag: canonicalTag(t) })), psWarnings: undefined, psBlocked: false })
+        }
+      } finally {
+        set({ busyExtract: false })
+      }
     },
 
     async generateArchetypes() {
       const { notes, psTags } = get()
-      const res = await fetchJsonSafe<Archetype[]>('/api/archetypes', { method: 'POST', body: JSON.stringify({ notes, anchors: psTags }) })
-  const data = res.ok && Array.isArray(res.data) ? (res.data as Archetype[]) : stubArchetypes(notes, psTags)
+      const anchors = (psTags || []).map((p) => (p as Pain).tag)
+      const res = await fetchJsonSafe<Archetype[]>('/api/archetypes', { method: 'POST', body: JSON.stringify({ notes, anchors }) })
+      const data = res.ok && Array.isArray(res.data) ? (res.data as Archetype[]) : stubArchetypes(notes, anchors)
       set({ archetypes: data })
     },
 
@@ -114,6 +164,22 @@ export const useAppStore = create<AppState & {
       set({ insights: data })
     },
 
+    ackPSAnimation() { set({ psJustGenerated: false }) },
+
+    resetAll() {
+      set({
+        title: '', wizWho: '', wizStruggle: '', wizCurrent: '', wizGap: '', wizSuccess: '',
+        psText: '', psTags: [], psWarnings: undefined, psBlocked: false, psJustGenerated: false,
+        busyPS: false, busyExtract: false,
+        notes: '', archetypes: [], result: null, insights: null,
+      })
+      try {
+        localStorage.removeItem('clusters-ui')
+        localStorage.removeItem('clusters-student-v1')
+        localStorage.removeItem('clusters-student-v2')
+      } catch {}
+    },
+
     canGoArchetypes() {
       const s = get(); return !!s.psText && (s.psTags?.length || 0) > 0
     },
@@ -123,5 +189,5 @@ export const useAppStore = create<AppState & {
     canSeeInsights() {
       const s = get(); return !!s.result
     },
-  }), { name: 'clusters-ui' })
+  }), { name: 'clusters-student-v2', version: 2 })
 )
