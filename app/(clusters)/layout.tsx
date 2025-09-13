@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -8,7 +8,9 @@ import {
   Sparkles, MailPlus, User, ChevronLeft, ChevronRight, Menu
 } from 'lucide-react';
 
-type Item = { href:string; label:string; icon:any; external?:boolean };
+import { LucideIcon } from 'lucide-react';
+
+type Item = { href:string; label:string; icon:LucideIcon; external?:boolean };
 
 const items: Item[] = [
   { href:'/instructions', label:'Instructions', icon: FileText },
@@ -16,7 +18,6 @@ const items: Item[] = [
   { href:'/archetypes', label:'Archetypes', icon: UsersIcon },
   { href:'/metrics', label:'Quality Metrics & Clusters', icon: ComponentIcon },
   { href:'/insights', label:'Insights', icon: Sparkles },
-  // Subscribe = external per spec
   { href:'https://www.manaboodle.com/subscribe', label:'Subscribe', icon: MailPlus, external:true },
 ];
 
@@ -36,28 +37,26 @@ export default function ClustersLayout({ children }:{ children:React.ReactNode }
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  // Close drawer when navigating on mobile
   useEffect(() => { if (isMobile) setDrawerOpen(false); }, [p, isMobile]);
 
   return (
     <div className="app-shell">
-      {/* Sidebar with toggle row UNDER header area */}
+      {/* Sidebar */}
       <aside className={`sidebar ${collapsed && !isMobile ? 'collapsed' : ''} ${isMobile && drawerOpen ? 'open' : ''}`}>
-        {/* Collapse button row aligned to icon column */}
+        {/* First nav item = collapse toggle (desktop only) */}
         {!isMobile && (
-          <div className="collapse-row">
-            <button
-              className="collapse-btn"
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              onClick={() => setCollapsed(c => !c)}
-              title={collapsed ? 'Expand' : 'Collapse'}
-            >
-              {collapsed ? <ChevronRight size={16}/> : <ChevronLeft size={16}/>}
-            </button>
-          </div>
+          <button
+            className="nav-link"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => setCollapsed(c => !c)}
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <ChevronRight className="nav-icon" /> : <ChevronLeft className="nav-icon" />}
+            <span className="nav-label">{collapsed ? 'Expand' : 'Collapse'}</span>
+          </button>
         )}
 
-        {/* Nav items (subtle active shade) */}
+        {/* Nav items */}
         <nav className="nav">
           {items.map(({ href, label, icon:Icon, external }) => {
             const active = !external && p === href;
@@ -76,7 +75,7 @@ export default function ClustersLayout({ children }:{ children:React.ReactNode }
           })}
         </nav>
 
-        {/* Footer: Account only (subtle) */}
+        {/* Bottom: Account only */}
         <div className="sidebar-footer" style={{ marginTop:12 }}>
           <Link href="/account" className="nav-link account-link" title="Account" style={{ flexGrow:0 }}>
             <User className="nav-icon" />
@@ -85,20 +84,19 @@ export default function ClustersLayout({ children }:{ children:React.ReactNode }
         </div>
       </aside>
 
-      {/* Mobile drawer overlay + hamburger (single toggle on mobile ONLY) */}
+      {/* Mobile overlay */}
       {isMobile && drawerOpen && <div className="overlay" onClick={() => setDrawerOpen(false)} />}
 
+      {/* Content with full-width header */}
       <div className="content">
-        {/* Full-width header with brand + subtitle; hamburger only on mobile */}
         <header className="topbar">
-          {isMobile ? (
-            <button className="nav-toggle" aria-label="Open menu" onClick={() => setDrawerOpen(true)}>
-              <Menu size={18} />
+          {isMobile && (
+            <button className="nav-link" style={{ padding:'6px 10px' }} aria-label="Open menu" onClick={() => setDrawerOpen(true)}>
+              <Menu className="nav-icon" />
+              <span className="nav-label">Menu</span>
             </button>
-          ) : (
-            <div />
           )}
-          <div className="topbar-title">
+          <div className="topbar-title" style={{ marginLeft:isMobile ? 8 : 0 }}>
             <span className="brand-green">Clusters</span>
             <span className="subtitle">JTBD Student Edition (MVP)</span>
           </div>

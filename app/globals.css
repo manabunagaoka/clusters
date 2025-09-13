@@ -199,75 +199,37 @@ a {
 .sidebar-footer{ margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px }
 .footer-text{ color:#94a3b8; font-size:12px }
 
-/* Mobile overlay already handled; keep active styles as-is */
-
-/* ===== Topbar title ===== */
-.topbar-title{
-  font-weight:700; color:var(--text);
-  letter-spacing:.2px; font-size:14px;
+/* ===== Full-width topbar with left-aligned title ===== */
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-start;padding:0 16px;
 }
+.topbar-title{display:flex;align-items:center;gap:10px}
+.topbar-title .brand-green{color:#059669;font-weight:800;font-size:20px;letter-spacing:.2px}
+.topbar-title .subtitle{color:#64748b;font-weight:600;font-size:14px}
 
-/* ===== Sidebar brand row + collapse chevron ===== */
-.sidebar .brand-row{
-  display:flex; align-items:center; gap:8px;
+/* ===== Subtle tab style (shared by links and buttons) ===== */
+.nav{display:grid;gap:6px}
+.nav-link{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--text);text-decoration:none;cursor:pointer
 }
-.sidebar .tagline{ color:#94a3b8; font-size:12px }
-.sidebar .collapse-btn{
-  appearance:none; border:1px solid var(--border); background:#fff; color:var(--text);
-  width:32px; height:32px; border-radius:8px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+.nav-icon{width:18px;height:18px}
 
-/* Collapsed mode: hide tagline and nav labels */
-.sidebar.collapsed .tagline,
-.sidebar.collapsed .nav-label,
-.sidebar.collapsed .footer-text{ display:none }
+/* Make <button> tabs identical to <a>/<Link> tabs */
+button.nav-link{appearance:none}
 
-/* Nav rows use icon + label; center icon when collapsed */
-.nav-link{ display:flex; align-items:center; gap:12px; padding:8px 10px }
-.nav-icon{ width:18px; height:18px }
-.sidebar.collapsed .nav-link{ justify-content:center }
-.sidebar.collapsed .nav-icon{ margin:0 }
-
-/* Footer row */
-.sidebar-footer{
-  margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px
-}
-.footer-text{ color:#94a3b8; font-size:12px }
-
-/* Mobile drawer already styled; keep .overlay as is */
-
-/* ===== Top header (full width) ===== */
-.topbar-title {
-  display:flex; align-items:center; gap:10px;
-  font-size:14px; letter-spacing:.2px;
-}
-.topbar-title .brand-green { color:#059669; font-weight:800; font-size:20px; }
-.topbar-title .subtitle { color:#64748b; font-weight:600; }
-
-/* ===== Subtle active tab look (original light highlight) ===== */
-.nav-link { display:flex; align-items:center; gap:12px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); text-decoration:none; }
-.nav-link.active { background:#eef2ff; border-color:#c7d2fe; }
-
-/* ===== Sidebar: collapse button row UNDER header, aligned to icon column ===== */
-.collapse-row {
-  display:flex; justify-content:flex-start; padding:6px 10px 4px;  /* same left padding as nav-link */
-}
-.collapse-btn {
-  appearance:none; border:1px solid var(--border); background:#fff; color:var(--text);
-  width:32px; height:32px; border-radius:8px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-}
-
-/* Collapsed state: hide nav labels and keep icons centered */
-.sidebar.collapsed { width:64px; }
-.sidebar.collapsed .nav-label { display:none; }
-.sidebar.collapsed .nav-link { justify-content:center; }
-.sidebar.collapsed .collapse-row { justify-content:center; padding:6px 0 4px; }
+/* Collapsed state alignment */
+.sidebar.collapsed{width:64px}
+.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-link{justify-content:center}
+.sidebar.collapsed .nav-icon{margin:0}
 
 /* Bottom account row (subtle) */
-.sidebar-footer { margin-top:auto; }
-.sidebar-footer .account-link { opacity:.9; }
-.sidebar-footer .account-link:hover { opacity:1; }
+.sidebar-footer{margin-top:auto}
+.sidebar-footer .account-link{opacity:.9}
+.sidebar-footer .account-link:hover{opacity:1}
 
-/* Mobile drawer remains as in your build; no duplicate toggles */
+/* Mobile drawer stays as-is; hamburger is only on mobile */
