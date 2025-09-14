@@ -307,3 +307,17 @@ button.nav-link{appearance:none}
 
 /* Default card body copy */
 .card-body{ color:#334155; font-size:14px; line-height:1.6 }
+
+/* Inner findings box inside a profile card */
+.findings {
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 14px;
+  margin-top:8px;
+}
+.findings .section { margin-top:8px; }
+.findings .label { font-weight:700; color:#0f172a; font-size:13px; margin-bottom:4px; }
+.findings ul { margin:4px 0 0; padding-left:18px; }
+.findings li { margin:2px 0; }
+.findings .meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
