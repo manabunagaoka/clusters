@@ -15,6 +15,7 @@ const items: Item[] = [
   { href:'/instructions', label:'Instructions', icon: FileText },
   { href:'/problem', label:'Problem Statement', icon: Bug },
   { href:'/archetypes', label:'Archetypes', icon: UsersIcon },
+  { href:'/profiles', label:'Profiles (JTBD)', icon: Sparkles },
   { href:'/metrics', label:'Quality Metrics & Clusters', icon: ComponentIcon },
   { href:'/insights', label:'Insights', icon: Sparkles },
   { href:'/subscribe', label:'Subscribe', icon: MailPlus },

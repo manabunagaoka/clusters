@@ -65,6 +65,7 @@ export const useAppStore = create<AppState & {
   generatePS: () => Promise<void>
   extractPains: () => Promise<void>
   generateArchetypes: () => Promise<void>
+  generateProfiles: () => Promise<void>
   runAnalysis: () => Promise<void>
   getInsights: () => Promise<void>
   ackPSAnimation: () => void
@@ -72,6 +73,7 @@ export const useAppStore = create<AppState & {
   canGoArchetypes: () => boolean
   canRunAnalysis: () => boolean
   canSeeInsights: () => boolean
+  clearProfiles: () => void
 }>()(
   PERSIST
     ? persist((set, get) => ({
@@ -98,7 +100,13 @@ export const useAppStore = create<AppState & {
   emergent: null,
     result: null,
     insights: null,
-    error: undefined,
+  error: undefined,
+  // Profiles (JTBD)
+  profiles: [],
+  profilesMatrix: [],
+  profilesSummary: null,
+  profilesError: '',
+  busyProfiles: false,
 
     setNotes: (v) => set({ notes: v }),
     setPSText: (v) => set({ psText: v }),
@@ -203,6 +211,29 @@ export const useAppStore = create<AppState & {
       }
     },
 
+    async generateProfiles(){
+      const s = get();
+      set({ busyProfiles:true, profilesError:'', profiles:[], profilesMatrix:[], profilesSummary:null });
+      try {
+        const payload = { notes: s.notes || '', ps_anchors: (s.psTags||[]).map(t=>t.tag) };
+        const json = await fetchJsonSafe('/api/profiles', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+        const data = (json && (json as any).ok) ? (json as any).data : null;
+        set({
+          profiles: data?.profiles || [],
+          profilesMatrix: data?.matrix || [],
+          profilesSummary: data?.summary || null,
+          profilesError: data?.note || ''
+        });
+      } catch(e:any){
+        set({ profilesError: e?.message || 'Failed to generate profiles.' });
+      } finally {
+        set({ busyProfiles:false });
+      }
+    },
+    clearProfiles(){ set({ profiles:[], profilesMatrix:[], profilesSummary:null, profilesError:'' }); },
+
     async runAnalysis() {
       const { archetypes } = get()
       const res = await fetchJsonSafe<Analysis>('/api/analysis', { method: 'POST', body: JSON.stringify({ archetypes }) })
@@ -244,7 +275,7 @@ export const useAppStore = create<AppState & {
     canSeeInsights() {
       const s = get(); return !!s.result
     },
-    }), { name: 'clusters-student-v3', version: 3 })
+  }), { name: 'clusters-student-v3', version: 3 })
     : ((set, get) => ({
       // Wizard defaults
       title: '',
@@ -270,6 +301,12 @@ export const useAppStore = create<AppState & {
       result: null,
       insights: null,
   error: undefined,
+      // Profiles (JTBD)
+      profiles: [],
+      profilesMatrix: [],
+      profilesSummary: null,
+      profilesError: '',
+      busyProfiles: false,
 
       setNotes: (v) => set({ notes: v }),
       setPSText: (v) => set({ psText: v }),
@@ -353,6 +390,29 @@ export const useAppStore = create<AppState & {
           set({ busyArch:false });
         }
       },
+
+      async generateProfiles(){
+        const s = get();
+        set({ busyProfiles:true, profilesError:'', profiles:[], profilesMatrix:[], profilesSummary:null });
+        try {
+          const payload = { notes: s.notes || '', ps_anchors: (s.psTags||[]).map(t=>t.tag) };
+          const json = await fetchJsonSafe('/api/profiles', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+          });
+          const data = (json && (json as any).ok) ? (json as any).data : null;
+          set({
+            profiles: data?.profiles || [],
+            profilesMatrix: data?.matrix || [],
+            profilesSummary: data?.summary || null,
+            profilesError: data?.note || ''
+          });
+        } catch(e:any){
+          set({ profilesError: e?.message || 'Failed to generate profiles.' });
+        } finally {
+          set({ busyProfiles:false });
+        }
+      },
+      clearProfiles(){ set({ profiles:[], profilesMatrix:[], profilesSummary:null, profilesError:'' }); },
 
       async runAnalysis() {
         const { archetypes } = get()

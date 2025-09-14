@@ -135,4 +135,11 @@ export type AppState = {
   insights: Insights | null
   // last error message for UX (e.g., server failure on archetypes)
   error?: string
+
+  // JTBD Profiles (new flow)
+  profiles?: any[]
+  profilesMatrix?: any[]
+  profilesSummary?: null | { anchor_coverage: any[]; top_emergents: any[] }
+  profilesError?: string
+  busyProfiles?: boolean
 }
