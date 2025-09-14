@@ -25,7 +25,7 @@ export default function Page(){
         <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Flow</div>
         <ol style={{ paddingLeft: 18, margin: 0, color: '#334155', lineHeight: 1.8 }}>
           <li><b>Refine your Problem Statement</b> — Make clear who, what’s hard, and what success looks like.</li>
-          <li><b>Extract Pains</b> — Pull key pain points to test against interviews.</li>
+          <li><b>Extract Themes</b> — Pull key themes to test against interviews.</li>
           <li><b>Interview → Paste Notes</b> — One idea per line. Examples:
             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
               <li>I’m concerned about <b>rising childcare costs</b>.</li>
@@ -33,7 +33,7 @@ export default function Page(){
               <li>I’m <b>unsure whether going back to college</b> is right for my career.</li>
             </ul>
           </li>
-          <li><b>Generate Archetypes</b> — One-sentence profiles, canonical tags, and aligned quotes.</li>
+          <li><b>Generate Profiles</b> — Mini product stories with JTBD fields and theme tags.</li>
           <li><b>Run Analysis → Quality Metrics, Readiness &amp; Clusters → Insights</b> — Review metrics and readiness, then learn segments from Clusters formed from Archetypes. Open Insights to see what this means and next steps.</li>
         </ol>
       </div>

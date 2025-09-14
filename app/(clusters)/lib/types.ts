@@ -137,9 +137,39 @@ export type AppState = {
   error?: string
 
   // JTBD Profiles (new flow)
-  profiles?: any[]
-  profilesMatrix?: any[]
-  profilesSummary?: null | { anchor_coverage: any[]; top_emergents: any[] }
+  profiles?: JTBDProfile[]
+  profilesMatrix?: ProfilesMatrixRow[]
+  profilesSummary?: ProfilesSummary | null
   profilesError?: string
   busyProfiles?: boolean
+}
+
+// JTBD Profiles types
+export type JTBDContext = { role?: string; geo?: string; work_pattern?: string; language_pref?: string }
+export type JTBDFields = {
+  who?: string
+  context?: JTBDContext
+  struggling_moment?: string
+  jobs?: string[]
+  workarounds?: string[]
+  selection_criteria?: string[]
+  anxieties?: string[]
+  outcomes?: string[]
+}
+export type JTBDProfile = {
+  id: string
+  title?: string
+  narrative: string
+  themes: { core: string[]; facets: string[] }
+  theme_weights: Record<string, number>
+  jtbd: JTBDFields
+}
+export type ProfilesSummary = { anchor_coverage: { tag: string; count: number }[]; top_emergents: { tag: string; count: number }[] }
+export type ProfilesMatrixRow = [string, Record<string, number>]
+export type ProfilesAPIResponse = {
+  profiles: JTBDProfile[]
+  matrix: ProfilesMatrixRow[]
+  summary: ProfilesSummary
+  note?: string
+  theme_universe?: string[]
 }

@@ -17,7 +17,7 @@ export default function Page() {
   const r = result?.readiness
 
   return (
-    <StepGuard allow={canRunAnalysis()} redirectTo="/archetypes">
+    <StepGuard allow={canRunAnalysis()} redirectTo="/profiles">
       <div>
         <h2 className="page-title">Quality Metrics & Clusters</h2>
         <div className="card" style={{ marginTop:12 }}>

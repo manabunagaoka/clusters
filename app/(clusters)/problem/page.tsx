@@ -109,14 +109,14 @@ export default function Page(){
         </div>
 
         <div style={{ marginTop:10 }}>
-          <Button primary disabled={!canExtract} onClick={s.extractPains}>{s.busyExtract ? <LoaderDots/> : 'Extract Pains'}</Button>
+          <Button primary disabled={!canExtract} onClick={s.extractPains}>{s.busyExtract ? <LoaderDots/> : 'Extract Themes'}</Button>
         </div>
 
         <div className="green-box" style={{ marginTop:10 }}>
-          <div style={{ fontWeight:800, marginBottom:4 }}>Anchors (pains)</div>
-          <div className="hint" style={{ marginBottom:8 }}>These are the assumed pains you’ll test against real interviews.</div>
+          <div style={{ fontWeight:800, marginBottom:4 }}>Themes</div>
+          <div className="hint" style={{ marginBottom:8 }}>These are the assumed themes you’ll test against real interviews.</div>
           {(s.psTags.length || 0) === 0 ? (
-            <div className="hint">No anchors yet. Click Extract Pains.</div>
+            <div className="hint">No themes yet. Click Extract Themes.</div>
           ) : (
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {s.psTags.map((p,i)=>(
@@ -138,7 +138,7 @@ export default function Page(){
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:12 }}>
-          <Link className={`btn ${canNext ? 'btn-primary' : 'disabled'}`} href={canNext ? '/archetypes' : '#'} aria-disabled={!canNext}>NEXT</Link>
+          <Link className={`btn ${canNext ? 'btn-primary' : 'disabled'}`} href={canNext ? '/profiles' : '#'} aria-disabled={!canNext}>NEXT</Link>
           {!canNext && <span className="hint">Generate &amp; extract first.</span>}
         </div>
       </div>

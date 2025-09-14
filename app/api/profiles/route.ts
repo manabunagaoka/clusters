@@ -32,7 +32,7 @@ function equivKey(t: string){
   return x;
 }
 function forceFamily(tag:string){
-  let t = toSnakeStrict(tag);
+  const t = toSnakeStrict(tag);
   if (FACET_BLOCKLIST.has(t)) return '';
   if (ANCHOR_FAMILIES.includes(t)) return t;
   const f = equivKey(t);
@@ -72,6 +72,26 @@ function uniq<T>(arr:T[], key=(x:T)=>String(x), limit=8){
   return out;
 }
 
+function isMessy(raw:string, profilesCount:number, coreThemeHits:number){
+  const tooShort = raw.trim().length < 220;
+  const noProfiles = profilesCount === 0;
+  const noCore = coreThemeHits === 0;
+  return tooShort || noProfiles || noCore;
+}
+
+type JtbdReply = {
+  who?: string
+  context?: { role?: string; geo?: string; work_pattern?: string; language_pref?: string }
+  struggling_moment?: string
+  jobs_to_be_done?: string[]
+  pains?: Array<{ tag?: string }>
+  workarounds?: string[]
+  selection_criteria?: string[]
+  anxieties?: string[]
+  outcomes?: string[]
+  sentences?: Array<{ text?: string; tags?: string[] }>
+}
+
 /* ---------- LLM helpers ---------- */
 async function jtbdNormalize(client:OpenAI, blockId:string, text:string){
   const sys = `
@@ -103,11 +123,11 @@ Rules:
       { role:'user', content: `INTERVIEW ${blockId}\n${text}` }
     ]
   });
-  let out:any = {};
+  let out: unknown = {};
   try { out = JSON.parse(r.choices?.[0]?.message?.content || '{}'); } catch {}
-  return out;
+  return out as Record<string, unknown>;
 }
-async function miniPS(client:OpenAI, fields:any){
+async function miniPS(client:OpenAI, fields: Record<string, unknown>){
   const sys = `
 Rewrite JTBD fields into one 2–3 sentence narrative (human, student-friendly).
 No code-like labels (no snake_case), no invented numbers, no UX fluff.
@@ -133,8 +153,7 @@ No code-like labels (no snake_case), no invented numbers, no UX fluff.
 /* ---------- Main ---------- */
 export async function POST(req: NextRequest) {
   try {
-    const { notes = "", ps_anchors = [] } = await req.json() || {};
-    const psAnchors = Array.isArray(ps_anchors) ? ps_anchors.map((t:string)=>toSnakeStrict(t)) : [];
+  const { notes = "", ps_anchors = [] } = await req.json() || {} as { notes?: string; ps_anchors?: string[] };
     const blocks = normalizeNotes(String(notes||''));
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({
@@ -153,28 +172,28 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const profiles:any[] = [];
+  const profiles: Array<Record<string, unknown>> = [];
     const tagCountsAll = new Map<string,number>(); // for summary
     const themeUniverse = new Set<string>();
-    const matrix:any[] = [];
+  const matrix: Array<[string, Record<string, number>]> = [];
 
     for (const block of blocks){
       // 1) JTBD normalize
-      let jtbd:any = {};
+  let jtbd: JtbdReply = {};
       try { jtbd = await jtbdNormalize(client, block.id, block.text); } catch {}
-      const sentences = Array.isArray(jtbd?.sentences) ? jtbd.sentences : [];
+  const sentences: Array<{ text?: string; tags?: string[] }> = Array.isArray(jtbd?.sentences) ? (jtbd.sentences as Array<{ text?: string; tags?: string[] }>) : [];
 
       // Collect tags per sentence
-      const sentTags = sentences.map((s:any)=>({
+      const sentTags = sentences.map((s: { text?: string; tags?: string[] }) => ({
         text: String(s?.text || ''),
-        tags: Array.isArray(s?.tags) ? s.tags.map((t:any)=>toSnakeStrict(String(t))) : []
-  })).filter((s: { text: string }) => !!s.text);
+        tags: Array.isArray(s?.tags) ? (s.tags as string[]).map((t: string) => toSnakeStrict(String(t))) : [] as string[]
+      })).filter((s: { text?: string }) => !!s.text);
 
       // Theme set per profile with weights (count of sentence-hits per tag family)
       const weights = new Map<string, number>();
 
       // 2) From JTBD pains
-      const pains = Array.isArray(jtbd?.pains) ? jtbd.pains : [];
+      const pains = Array.isArray(jtbd?.pains) ? jtbd.pains as Array<{ tag?: string }> : [];
       for (const p of pains){
         const fam = forceFamily(p?.tag || '');
         if (fam){ weights.set(fam, (weights.get(fam)||0) + 1); themeUniverse.add(fam); }
@@ -205,20 +224,20 @@ export async function POST(req: NextRequest) {
         if (detected){ weights.set(detected, (weights.get(detected)||0)+1); themeUniverse.add(detected); tagCountsAll.set(detected, (tagCountsAll.get(detected)||0)+1); }
       }
 
-      // Derive anchors/facets arrays
-      const anchors = Array.from(weights.keys()).filter(k => ANCHOR_FAMILIES.includes(equivKey(k)));
-      const facets  = Array.from(weights.keys()).filter(k => !ANCHOR_FAMILIES.includes(equivKey(k)) && !FACET_BLOCKLIST.has(k));
+  // Derive themes (core/facets)
+  const coreThemes = Array.from(weights.keys()).filter(k => ANCHOR_FAMILIES.includes(equivKey(k)));
+  const facetThemes  = Array.from(weights.keys()).filter(k => !ANCHOR_FAMILIES.includes(equivKey(k)) && !FACET_BLOCKLIST.has(k));
 
       // Normalize weights to 0..1 with cap {0.33,0.67,1.0} to keep it simple
       const maxCount = Math.max(1, ...Array.from(weights.values()));
-      const themeWeights:any = {};
+  const themeWeights: Record<string, number> = {};
       weights.forEach((cnt, tag) => {
         const w = cnt / maxCount;
         themeWeights[tag] = w >= 0.8 ? 1.0 : w >= 0.5 ? 0.67 : 0.33;
       });
 
       // 5) Mini-PS narrative
-      let narrative = '';
+  let narrative = '';
       try { narrative = await miniPS(client, jtbd || {}); } catch { narrative = ''; }
 
       const profileId = block.id;
@@ -226,8 +245,7 @@ export async function POST(req: NextRequest) {
         id: profileId,
         title: '', // optional title later
         narrative,
-        anchors: uniq(anchors),
-        facets: uniq(facets),
+        themes: { core: uniq(coreThemes), facets: uniq(facetThemes) },
         theme_weights: themeWeights,
         jtbd: {
           who: jtbd?.who || '',
@@ -241,7 +259,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      matrix.push([profileId, themeWeights]);
+  matrix.push([profileId, themeWeights]);
     }
 
     // Build summary from tagCountsAll (families for anchors; non-anchors for emergents)
@@ -260,20 +278,25 @@ export async function POST(req: NextRequest) {
         .map(([tag,count])=>({ tag, count }));
 
     const summary = { anchor_coverage: toArr(anchorMap), top_emergents: toArr(emergMap).slice(0,12) };
+    const coreHits = (summary.anchor_coverage||[]).reduce((n,x)=>n+x.count,0);
+    const messy = isMessy(String(notes||'').trim(), profiles.length, coreHits);
+    const note = messy
+      ? 'For best results, organize interviews with name/context, struggling moment, current workarounds, and outcomes (JTBD). You can proceed now—Clusters will still run—but quality may be limited.'
+      : '';
 
     return NextResponse.json({
       profiles,
       theme_universe: Array.from(themeUniverse),
       matrix,
       summary,
-      note: ''
+      note
     }, { status:200 });
 
-  } catch (e:any) {
+  } catch (e) {
     return NextResponse.json({
       profiles: [], theme_universe: [], matrix: [],
       summary:{ anchor_coverage:[], top_emergents:[] },
-      note: e?.message || 'Profiles generation had an issue. Paste more notes or try again.'
+      note: e instanceof Error ? e.message : 'Profiles generation had an issue. Paste more notes or try again.'
     }, { status:200 });
   }
 }

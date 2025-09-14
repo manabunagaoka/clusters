@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
-import type { AppState, Archetype, Analysis, Insights, PsChip, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse } from '../lib/types'
+import type { AppState, Archetype, Analysis, Insights, PsChip, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse } from '../lib/types'
 
 const PERSIST = !(process.env.NEXT_PUBLIC_PERSIST === '0' || process.env.NEXT_PUBLIC_PERSIST === 'false');
 
@@ -216,18 +216,19 @@ export const useAppStore = create<AppState & {
       set({ busyProfiles:true, profilesError:'', profiles:[], profilesMatrix:[], profilesSummary:null });
       try {
         const payload = { notes: s.notes || '', ps_anchors: (s.psTags||[]).map(t=>t.tag) };
-        const json = await fetchJsonSafe('/api/profiles', {
+        const json = await fetchJsonSafe<ProfilesAPIResponse>('/api/profiles', {
           method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
         });
-        const data = (json && (json as any).ok) ? (json as any).data : null;
+        const data = (json && json.ok) ? json.data : null;
         set({
           profiles: data?.profiles || [],
           profilesMatrix: data?.matrix || [],
           profilesSummary: data?.summary || null,
           profilesError: data?.note || ''
         });
-      } catch(e:any){
-        set({ profilesError: e?.message || 'Failed to generate profiles.' });
+      } catch(e){
+        const msg = e instanceof Error ? e.message : 'Failed to generate profiles.'
+        set({ profilesError: msg });
       } finally {
         set({ busyProfiles:false });
       }
@@ -396,18 +397,19 @@ export const useAppStore = create<AppState & {
         set({ busyProfiles:true, profilesError:'', profiles:[], profilesMatrix:[], profilesSummary:null });
         try {
           const payload = { notes: s.notes || '', ps_anchors: (s.psTags||[]).map(t=>t.tag) };
-          const json = await fetchJsonSafe('/api/profiles', {
+          const json = await fetchJsonSafe<ProfilesAPIResponse>('/api/profiles', {
             method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
           });
-          const data = (json && (json as any).ok) ? (json as any).data : null;
+          const data = (json && json.ok) ? json.data : null;
           set({
             profiles: data?.profiles || [],
             profilesMatrix: data?.matrix || [],
             profilesSummary: data?.summary || null,
             profilesError: data?.note || ''
           });
-        } catch(e:any){
-          set({ profilesError: e?.message || 'Failed to generate profiles.' });
+        } catch(e){
+          const msg = e instanceof Error ? e.message : 'Failed to generate profiles.'
+          set({ profilesError: msg });
         } finally {
           set({ busyProfiles:false });
         }
