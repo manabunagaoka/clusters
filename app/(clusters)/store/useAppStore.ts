@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
-import type { AppState, Archetype, Analysis, Insights, PsChip, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse } from '../lib/types'
+import type { AppState, Archetype, Analysis, Insights, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse } from '../lib/types'
 
 const PERSIST = !(process.env.NEXT_PUBLIC_PERSIST === '0' || process.env.NEXT_PUBLIC_PERSIST === 'false');
 
@@ -143,35 +143,28 @@ export const useAppStore = create<AppState & {
           { method: 'POST', body: JSON.stringify({ problem_statement: psText }) }
         )
         if (res.ok && Array.isArray(res.data?.pains)) {
-          const json = res.data;
-          // Keep model label; lightly canonicalize tag client-side as well
-          const pains = json.pains
-          const tags: PsChip[] = pains
-            .map((p: { tag: string; label?: string }) => ({ tag: canonicalTag(p.tag), label: (p.label || '').toString() }))
-            .filter((p: PsChip) => Boolean(p.tag))
+          const json = res.data as { pains?: Array<{ tag?: string }>; warnings?: { solution_bias?: boolean; too_many?: { count?: number }; too_vague?: boolean }; block_next?: boolean; note?: string };
+          const pains = Array.isArray(json?.pains) ? json.pains : [];
 
-          const count = tags.length
-          const tooMany = count >= 5
-
-          // Actionable message
-          let note: string | null = null
-          if (tooMany) {
-            note = `We found ${count} anchors (pains/challenges). That’s 5 or more, which will create messy clusters. Go back to your Problem Statement and refine to narrow your focus (combine related items or specify who/when/where). NEXT is disabled until you reduce anchors.`
-          } else if (count > 0) {
-            note = `From your Problem Statement, ${count} anchor${count>1?'s':''} were identified. These will be used to analyze your interview notes and check for overlap and emergent themes. If you accept these anchors as is, click NEXT. If there are 5 or more, NEXT remains disabled.`
-            if (count === 4) {
-              note += ' Consider narrowing to 2–3 for tighter clustering.'
-            }
-          } else if (json?.warnings) {
-            note = 'No anchors detected. Add specifics about who, what’s hard, and what success looks like, then try Extract again.'
+          // Build a clear, actionable message
+          let warnText: string | null = null;
+          if (json?.warnings?.solution_bias) {
+            warnText = 'Detected solution framing in your statement. Themes were extracted from the problem portion only. Consider removing “solution” sentences for clearer diagnosis.';
+          } else if (json?.warnings?.too_many) {
+            const c = Number(json.warnings.too_many.count || pains.length || 0);
+            warnText = `There are too many themes detected (${c}). Narrow to 2–3 for tighter clustering.`;
+          } else if (json?.warnings?.too_vague) {
+            warnText = 'Your statement may be too vague. Add who/context, the struggle, current workarounds, and desired outcome.';
+          } else if (json?.note) {
+            warnText = String(json.note);
           }
 
           set({
-            psTags: tags,
-            psWarnings: note || undefined,
-            psBlocked: tooMany || !!json?.block_next,
-            archetypes:[], summary:null, patterns:[], result:null, insights:null
-          })
+            psTags: pains.map((p) => ({ tag: canonicalTag(String(p.tag || '')) })),
+            psWarnings: warnText || undefined,
+            psBlocked: !!json?.block_next,
+            archetypes: [], summary: null, patterns: [], result: null, insights: null
+          });
         } else {
           const tags = inferTagsFromText(psText)
           set({ psTags: tags.map(t => ({ tag: canonicalTag(t) })), psWarnings: undefined, psBlocked: false })
@@ -339,23 +332,28 @@ export const useAppStore = create<AppState & {
             { method: 'POST', body: JSON.stringify({ problem_statement: psText }) }
           )
           if (res.ok && Array.isArray(res.data?.pains)) {
-            const json = res.data;
-            const pains = json.pains
-            const tags: PsChip[] = pains
-              .map((p: { tag: string; label?: string }) => ({ tag: canonicalTag(p.tag), label: (p.label || '').toString() }))
-              .filter((p: PsChip) => Boolean(p.tag))
-            const count = tags.length
-            const tooMany = count >= 5
-            let note: string | null = null
-            if (tooMany) {
-              note = `We found ${count} anchors (pains/challenges). That’s 5 or more, which will create messy clusters. Go back to your Problem Statement and refine to narrow your focus (combine related items or specify who/when/where). NEXT is disabled until you reduce anchors.`
-            } else if (count > 0) {
-              note = `From your Problem Statement, ${count} anchor${count>1?'s':''} were identified. These will be used to analyze your interview notes and check for overlap and emergent themes. If you accept these anchors as is, click NEXT. If there are 5 or more, NEXT remains disabled.`
-              if (count === 4) { note += ' Consider narrowing to 2–3 for tighter clustering.' }
-            } else if (json?.warnings) {
-              note = 'No anchors detected. Add specifics about who, what’s hard, and what success looks like, then try Extract again.'
+            const json = res.data as { pains?: Array<{ tag?: string }>; warnings?: { solution_bias?: boolean; too_many?: { count?: number }; too_vague?: boolean }; block_next?: boolean; note?: string };
+            const pains = Array.isArray(json?.pains) ? json.pains : [];
+
+            // Build a clear, actionable message
+            let warnText: string | null = null;
+            if (json?.warnings?.solution_bias) {
+              warnText = 'Detected solution framing in your statement. Themes were extracted from the problem portion only. Consider removing “solution” sentences for clearer diagnosis.';
+            } else if (json?.warnings?.too_many) {
+              const c = Number((json.warnings?.too_many?.count) ?? (pains.length || 0));
+              warnText = `There are too many themes detected (${c}). Narrow to 2–3 for tighter clustering.`;
+            } else if (json?.warnings?.too_vague) {
+              warnText = 'Your statement may be too vague. Add who/context, the struggle, current workarounds, and desired outcome.';
+            } else if (json?.note) {
+              warnText = String(json.note);
             }
-            set({ psTags: tags, psWarnings: note || undefined, psBlocked: tooMany || !!json?.block_next, archetypes:[], summary:null, patterns:[], result:null, insights:null })
+
+            set({
+              psTags: pains.map((p) => ({ tag: canonicalTag(String(p?.tag || '')) })),
+              psWarnings: warnText || undefined,
+              psBlocked: !!json?.block_next,
+              archetypes: [], summary: null, patterns: [], result: null, insights: null
+            });
           } else {
             const tags = inferTagsFromText(psText)
             set({ psTags: tags.map(t => ({ tag: canonicalTag(t) })), psWarnings: undefined, psBlocked: false })
