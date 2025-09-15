@@ -1,177 +1,187 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-/** ------- Light canonicalization (merge only obvious dupes) ------- */
-function toSnakeStrict(s:string){
-  return (s||'')
-    .normalize('NFKC').toLowerCase()
-    .replace(/['’]/g,'')
-    .replace(/[^\p{Letter}\p{Number}\s-]/gu,' ')
-    .replace(/[-\s]+/g,' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .slice(0,3)
-    .join('_');
+/* ================= Core theme registry (single-word universals) ================= */
+const CORES = [
+  'cost','time','effort','quality','reliability','trust',
+  'flexibility','choice','information','risk','support','access','value'
+] as const;
+type CoreId = typeof CORES[number];
+
+// Reserved for future filtering of meta labels if needed.
+// const BLOCKLIST = new Set(['snake_case','misc','unknown','general','other']);
+
+/* Simple stem/keyword sets per core (domain-agnostic) */
+const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
+  cost:        [/cost|price|fee|budget|afford|pay|expens/i],
+  time:        [/time|wait|speed|fast|slow|delay/i],
+  effort:      [/effort|friction|hard|cumbersome|overhead/i],
+  quality:     [/quality|fit|accur|good|bad|relevant/i],
+  reliability: [/reliab|uptime|consisten|stable|dependable/i],
+  trust:       [/trust|safety|privacy|credib|referral/i],
+  flexibility: [/flex|schedul|shift|overnight|non[-\s]?traditional|adapt/i],
+  choice:      [/option|choice|variety|compare|too many|scroll/i],
+  information: [/info|content|find|discover|fragment|where.*find|limited selection/i],
+  risk:        [/risk|uncertain|lock|renew|cancel|penalty/i],
+  support:     [/support|help|service|assist/i],
+  access:      [/access|coverage|eligib|inclusion|language|bilingual/i],
+  value:       [/value|worth/i],
+};
+
+/* ================= Utils ================= */
+function scoreHeuristic(ps: string): Record<CoreId, number> {
+  const s = (ps||'').toLowerCase();
+  const out = {} as Record<CoreId, number>;
+  CORES.forEach(c => {
+    const hits = CORE_KEYWORDS[c].reduce((n, rx) => n + (s.match(rx)?.length || 0), 0);
+    out[c] = hits;
+  });
+  // normalize 0..1
+  const max = Math.max(1, ...Object.values(out));
+  CORES.forEach(c => out[c] = out[c] / max);
+  return out;
 }
 
-// Note: We previously merged near-duplicate tags; now we enforce families via forceFamily()
-
-// Canonical, stable anchor families and a small blocklist of meta labels
-const ANCHOR_FAMILIES = [
-  'trustworthy_care','rising_costs','coordination_challenge',
-  'option_overload','info_fragmentation','research_time_cost','value_uncertainty'
-];
-const BLOCKLIST = new Set(['snake_case','misc','unknown','general','other']);
-
-/** ------- Topic/state → pain safeguard (generic, cross-domain) ------- */
-function topicToPain(tag: string): string {
-  const x = toSnakeStrict(tag);
-
-  // decision / choice topics → cognitive load pains
-  if (['plan_selection','plan_choice','provider_selection','vendor_choice','feature_comparison','subscription_renewal','contract_renewal'].includes(x))
-    return 'value_uncertainty'; // or 'cancellation_friction' depending on context, but keep one generic here
-
-  // option sets → overload
-  if (['too_many_options','many_alternatives','offer_catalog','options_catalog','market_crowded'].includes(x))
-    return 'option_overload';
-
-  // scattered info/content/providers → fragmentation
-  if (['information_scattered','documentation_scattered','content_availability','service_scattered','siloed_information','where_is_it'].includes(x))
-    return 'info_fragmentation';
-
-  // research / discovery burden
-  if (['research_burden','too_much_research','information_overload','compare_time'].includes(x))
-    return 'research_time_cost';
-
-  // price / budget
-  if (['monthly_cost','pricing_confusion','affordability','affordability_challenge','budget_constraints'].includes(x))
-    return 'price_sensitivity';
-
-  // trust / privacy / safety
-  if (['trust_concerns','privacy_concerns','data_security','safety_concerns','trust_issues'].includes(x))
-    return 'trust_issues';
-
-  // onboarding / integration / setup
-  if (['implementation','onboarding','setup_time','integration_overhead'].includes(x))
-    return 'setup_complexity';
-
-  // scheduling / availability friction
-  if (['scheduling','time_slot_availability','calendar_conflict'].includes(x))
-    return 'scheduling_frustration';
-
-  // support quality
-  if (['customer_support','support_response','support_quality'].includes(x))
-    return 'support_unreliability';
-
-  // commitment / lock-in
-  if (['cancellation','cancelation','lock_in_risk','commitment_risk','early_termination_fee'].includes(x))
-    return 'cancellation_friction';
-
-  // pass through if already looks like a pain noun phrase
-  return x;
+async function withTimeout<T>(p: Promise<T>, ms: number, label='op'): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+    p.then(v => { clearTimeout(id); resolve(v); })
+     .catch(e => { clearTimeout(id); reject(e); });
+  });
 }
 
-// Map any tag to the nearest allowed family; drop if meta/unknown
-function forceFamily(tag:string){
-  let t = toSnakeStrict(tag);
-  if (BLOCKLIST.has(t)) return '';
-  if (ANCHOR_FAMILIES.includes(t)) return t;
-  t = topicToPain(t);
-  // additional direct mappings for stability
-  if (t === 'price_sensitivity') t = 'rising_costs';
-  if (t === 'scheduling_frustration' || t === 'setup_complexity') t = 'coordination_challenge';
-  if (t === 'trust_issues') t = 'trustworthy_care';
-  return ANCHOR_FAMILIES.includes(t) ? t : '';
-}
+async function scoreLLM(ps: string, client: OpenAI): Promise<{ scores: Record<CoreId, number>, why: Record<CoreId, string> }> {
+  const system = `
+You are scoring a short Problem Statement against a fixed list of universal themes.
+Return STRICT JSON ONLY:
 
-export async function POST(req: NextRequest) {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ note: 'OPENAI_API_KEY missing' }, { status: 500 });
-    }
-    const { problem_statement = '' } = await req.json();
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    /** --------- Prompt: explicit PAIN test + multi-domain examples ---------- */
-    const system = `
-Extract between 3 and 5 core pain points ("anchors") from the student's Problem Statement.
-
-Return STRICT JSON only:
 {
-  "pains":[
-    {"tag":"snake_case","label":"human phrase","why":"short clause","confidence":0..1}
-  ]
+  "scores": { "cost": 0..1, "time": 0..1, ... },
+  "why": { "cost": "short justification", "time": "..." }
 }
 
-DEFINITIONS
-- A "pain" describes what hurts, blocks progress, increases time/cost/risk, or adds friction.
-- Avoid topics/states like "plan_selection", "provider_selection", "subscription_renewal", "information_scattered".
-  Convert them into pains:
-  - plan_selection / provider_selection  -> option_overload (too many choices) OR value_uncertainty (unsure it's worth it)
-  - subscription_renewal / contract_renewal -> value_uncertainty OR cancellation_friction
-  - information_scattered / documentation_scattered -> info_fragmentation (info split across places)
-- Prefer short, domain-agnostic NOUN PHRASES that stay close to the student's wording.
-- "tag": snake_case, max 3 words (e.g., trust_issues, option_overload, info_fragmentation).
-- "label": human-readable phrase (what the student would recognize).
-- "why": one short clause grounded in the input.
-- "confidence": 0..1 number (no %).
-- Do not invent facts.
+Rules:
+- Only these keys are allowed: cost,time,effort,quality,reliability,trust,flexibility,choice,information,risk,support,access,value
+- Values in 0..1 (decimals ok). No other keys. Keep justifications short.
+`.trim();
 
-POSITIVE EXAMPLES (multi-domain)
-- Telecom: "too many similar data plans"      -> tag: option_overload,       label: "too many plan options"
-- Higher-ed: "is this program worth tuition?" -> tag: value_uncertainty,     label: "value uncertainty"
-- SMB SaaS: "setup takes weeks"               -> tag: setup_complexity,      label: "setup takes too long"
-- Healthcare: "hard to find a time that fits" -> tag: scheduling_frustration,label: "scheduling frustration"
-- E-commerce: "hidden fees at checkout"       -> tag: price_sensitivity,     label: "price sensitivity"
-- Research: "info is scattered across sites"  -> tag: info_fragmentation,    label: "information fragmentation"
-- Trust: "hesitant to share data"             -> tag: trust_issues,          label: "data privacy concerns"
+  const user = `Problem Statement:\n"""${ps.slice(0, 2000)}"""`;
 
-NEGATIVE EXAMPLES (rewrite into pains)
-- "subscription_renewal" (state)     -> value_uncertainty or cancellation_friction
-- "plan_selection" (topic)           -> option_overload or value_uncertainty
-- "provider_selection" (topic)       -> option_overload
-- "information_scattered" (topic)    -> info_fragmentation
-    `.trim();
-
-    const resp = await client.chat.completions.create({
+  const resp = await withTimeout(
+    client.chat.completions.create({
       model: 'gpt-4o-mini',
-      temperature: 0.2,                 // small variance keeps student voice
-      max_tokens: 360,
+      temperature: 0.2,
+      max_tokens: 350,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: problem_statement }
+        { role: 'user', content: user }
       ]
-    });
+    }),
+    12000,
+    'llmScore'
+  );
 
-  let out: { pains?: Array<{ tag?: string; label?: string; why?: string; confidence?: number }> } = {};
-    try { out = JSON.parse(resp.choices?.[0]?.message?.content || '{}'); } catch { out = {}; }
-  const pains = Array.isArray(out?.pains) ? out.pains : [];
+  type LLMJson = { scores?: Partial<Record<CoreId, unknown>>; why?: Partial<Record<CoreId, unknown>> };
+  let parsed: LLMJson = {};
+  try { parsed = JSON.parse(resp.choices?.[0]?.message?.content || '{}') as LLMJson; } catch {}
+  const safeScores: Record<CoreId, number> = Object.create(null);
+  const safeWhy: Record<CoreId, string> = Object.create(null);
+  CORES.forEach(c => {
+    const v = Number(parsed?.scores?.[c]);
+    safeScores[c] = isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+    const w = String(parsed?.why?.[c] || '');
+    safeWhy[c] = w.slice(0, 200);
+  });
+  return { scores: safeScores, why: safeWhy };
+}
 
-    // Normalize: keep label, rewrite topics→pains, canonicalize lightly, sort by confidence, max 5
-    const normalized = pains.map((p) => {
-      const rawTag = String(p?.tag || '');
-      const tag = forceFamily(rawTag);
-      const label = (String(p?.label || '') || rawTag).trim();
-      const why = String(p?.why || '').slice(0, 200);
-      const confidence = Math.max(0, Math.min(1, Number(p?.confidence ?? 0)));
-      return { tag, label: label || tag.replace(/_/g,' '), why, confidence };
-    })
-    .filter((p)=> p.tag)
-    .sort((a,b)=> (b.confidence||0) - (a.confidence||0))
-    .slice(0, 5);
+/* Pick 2–4 themes with diversity safeguards */
+function pickThemes(consensus: Record<CoreId, number>, heur: Record<CoreId, number>, why: Record<CoreId, string>) {
+  // threshold is gentle; we’ll still enforce diversity
+  const THRESH = 0.25;
+  const entries = CORES.map(c => [c, consensus[c]] as [CoreId, number])
+                       .sort((a,b)=> b[1]-a[1]);
 
-    // Warnings & gating (policy unchanged)
+  // take themes above threshold
+  let selected = entries.filter(([,v])=> v >= THRESH).slice(0, 4).map(([c])=> c);
+
+  // Ensure at least 2 if PS clearly mentions >1 via heuristics
+  if (selected.length < 2) {
+    const sortedHeur = CORES.map(c => [c, heur[c]] as [CoreId, number])
+                            .sort((a,b)=> b[1]-a[1]);
+    const top2 = sortedHeur.slice(0,2).filter(([,v])=> v > 0).map(([c])=> c);
+    selected = Array.from(new Set([...selected, ...top2])).slice(0,2);
+  }
+
+  // If still 0 (very vague PS), we’ll return empty and a kind note
+  const pains = selected.map(tag => ({
+    tag,
+    why: why[tag] || `Signals in the statement suggest ${tag}.`,
+    confidence: Number(consensus[tag].toFixed(2))
+  }));
+
+  return pains;
+}
+
+/* ================= Handler ================= */
+export async function POST(req: NextRequest) {
+  try {
+    const { problem_statement = '' } = await req.json();
+    const ps = String(problem_statement || '').trim();
+
+    if (!ps) {
+      return NextResponse.json({
+        pains: [],
+        warnings: { too_vague: true },
+        block_next: true,
+        note: 'Add specifics about who, the struggle, what they currently do, and what success looks like.'
+      }, { status: 200 });
+    }
+
+    // Heuristic signal
+    const heur = scoreHeuristic(ps);
+
+    // LLM scorer (optional)
+    let llmScores: Record<CoreId, number> = Object.fromEntries(CORES.map(c=>[c,0])) as Record<CoreId, number>;
+    let llmWhy:    Record<CoreId, string> = Object.fromEntries(CORES.map(c=>[c,''])) as Record<CoreId, string>;
+    let note = '';
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      try {
+        const client = new OpenAI({ apiKey });
+        const { scores, why } = await scoreLLM(ps, client);
+        llmScores = scores; llmWhy = why;
+      } catch (e) {
+        note = e instanceof Error ? e.message : 'Theme scorer timed out; used keyword scoring only.';
+      }
+    } else {
+      note = 'OPENAI_API_KEY missing; used keyword scoring only.';
+    }
+
+    // Consensus (0.5 heur, 0.5 llm)
+    const consensus = {} as Record<CoreId, number>;
+    CORES.forEach(c => { consensus[c] = Number(((heur[c] + llmScores[c]) / 2).toFixed(2)); });
+
+    const pains = pickThemes(consensus, heur, llmWhy);
+
+    // Warnings + gating
   const warnings: Record<string, unknown> = {};
-    if (normalized.length >= 5) warnings.too_many = { count: normalized.length };
-    if (problem_statement.trim().length < 60) warnings.too_vague = true;
+    if (pains.length >= 5) warnings.too_many = { count: pains.length };
+    if (pains.length === 0) warnings.too_vague = true;
 
-    const block_next = normalized.length >= 5;
+    const block_next = pains.length >= 5 || pains.length === 0;
 
-    return NextResponse.json({ pains: normalized, warnings, block_next });
+    return NextResponse.json({ pains, warnings, block_next, note }, { status: 200 });
+
   } catch (e) {
-    const msg = (e as Error)?.message || 'Extract Pains failed';
-    return NextResponse.json({ note: msg }, { status: 500 });
+    // Graceful fallback
+    return NextResponse.json({
+      pains: [],
+      warnings: { error: true },
+      block_next: true,
+      note: e instanceof Error ? e.message : 'Could not extract themes. Try adding specifics (who/struggle/workarounds/outcomes).'
+    }, { status: 200 });
   }
 }
