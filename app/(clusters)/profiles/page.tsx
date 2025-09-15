@@ -61,16 +61,15 @@ export default function ProfilesPage(){
 
   return (
     <section>
-      <h2 style={{ marginTop:0 }}>Profiles (JTBD)</h2>
+  <h2 style={{ marginTop:0 }}>Profiles (JTBD)</h2>
 
       <div className="card" style={{ marginTop:12 }}>
-        <label className="label">Interview notes (any format)</label>
+        <label className="label">Paste your JTBD interview notes</label>
         <textarea
           className="input textarea"
           value={s.notes}
           onChange={e=>set({ notes:e.target.value })}
-          placeholder={`Paste raw interviews. We'll structure them automatically using a JTBD schema (` + 
-                      `who/context, struggling moment, pains, workarounds, outcomes).`}
+          placeholder={`Paste 3–8 interview notes. Separate interviews by a blank line or a header like “Interview 1”.\n\nHelpful (optional) structure:\nWho/Context\nStruggling moment\nWorkarounds\nOutcomes\n\nWe'll turn them into friendly JTBD profiles, map themes into universal core dimensions, and keep key phrases.`}
         />
         <div style={{ marginTop:10, display:'flex', gap:8 }}>
           <button className={`btn ${canGenerate ? 'btn-primary' : 'disabled'}`} disabled={!canGenerate} onClick={handleGenerate}>
@@ -96,7 +95,6 @@ export default function ProfilesPage(){
                 {(p.themes?.core||[]).map((t:string,i:number)=><span key={`c-${i}`} className="chip">{t}</span>)}
                 {(p.themes?.facets||[]).map((t:string,i:number)=><span key={`f-${i}`} className="chip">{t}</span>)}
               </div>
-              {/* Always-visible JTBD findings box */}
               <div className="findings">
                 {(p.jtbd?.who || p.jtbd?.context) && (
                   <div className="section">
@@ -112,42 +110,36 @@ export default function ProfilesPage(){
                     )}
                   </div>
                 )}
-
                 {p.jtbd?.struggling_moment && (
                   <div className="section">
                     <div className="label">Struggling moment</div>
                     <div>{p.jtbd.struggling_moment}</div>
                   </div>
                 )}
-
                 {Array.isArray(p.jtbd?.workarounds) && p.jtbd.workarounds.length>0 && (
                   <div className="section">
                     <div className="label">Workarounds</div>
                     <ul>{p.jtbd.workarounds.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
                   </div>
                 )}
-
                 {Array.isArray(p.jtbd?.jobs) && p.jtbd.jobs.length>0 && (
                   <div className="section">
                     <div className="label">Jobs</div>
                     <ul>{p.jtbd.jobs.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
                   </div>
                 )}
-
                 {Array.isArray(p.jtbd?.selection_criteria) && p.jtbd.selection_criteria.length>0 && (
                   <div className="section">
                     <div className="label">Selection criteria</div>
                     <ul>{p.jtbd.selection_criteria.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
                   </div>
                 )}
-
                 {Array.isArray(p.jtbd?.anxieties) && p.jtbd.anxieties.length>0 && (
                   <div className="section">
                     <div className="label">Anxieties</div>
                     <ul>{p.jtbd.anxieties.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
                   </div>
                 )}
-
                 {Array.isArray(p.jtbd?.outcomes) && p.jtbd.outcomes.length>0 && (
                   <div className="section">
                     <div className="label">Outcomes (success)</div>
