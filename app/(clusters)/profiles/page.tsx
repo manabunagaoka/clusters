@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 
 function LoaderDots(){
@@ -12,50 +12,12 @@ export default function ProfilesPage(){
   const set = useAppStore.setState;
   const canGenerate = !!(s.notes?.trim()) && !s.busyProfiles;
 
-  // typewriter state: id -> typed narrative
-  const [typed, setTyped] = useState<Record<string,string>>({});
-  const [playing, setPlaying] = useState(false);
-
   const handleGenerate = async ()=>{
-    setTyped({});
     await s.generateProfiles();
-    setPlaying(true);
   };
   const handleClear = ()=>{
     set({ profiles:[], profilesMatrix:[], profilesSummary:null, profilesError:'' });
   };
-
-  // PS vs Observed (reserved for future compare view)
-  // const psAnchors = useMemo(()=> (s.psTags||[]).map(p=>p.tag), [s.psTags]);
-  // const observed = s.profilesSummary?.anchor_coverage || [];
-  // kept for potential future comparison view
-  // const totalHits = (observed||[]).reduce((n,x)=>n+x.count,0) + (s.profilesSummary?.top_emergents||[]).reduce((n,x)=>n+x.count,0);
-  // const coverage = totalHits ? Math.round((observed.reduce((n,x)=>n+x.count,0) / totalHits) * 100) : 0;
-  // const gaps = psAnchors.filter(a => !(observed||[]).some(x => x.tag === a));
-
-  // Typewriter: reveal each profile sequentially
-  useEffect(()=>{
-    if (!playing) return;
-    const list = s.profiles || [];
-    let idx = 0; let current = list[0]?.id || '';
-    const timer = setInterval(()=>{
-      if (!list.length) { clearInterval(timer); setPlaying(false); return; }
-      const prof = list[idx];
-      if (!prof){ clearInterval(timer); setPlaying(false); return; }
-      const text = String(prof.narrative || '');
-      const soFar = (typed[prof.id] || '');
-      if (soFar.length < text.length){
-        setTyped(prev => ({ ...prev, [prof.id]: text.slice(0, soFar.length + 2) }));
-      } else {
-        // move to next
-        idx += 1;
-        current = list[idx]?.id || '';
-        if (!current) { clearInterval(timer); setPlaying(false); }
-      }
-    }, 12);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, s.profiles]);
 
   const hasProfiles = (s.profiles||[]).length > 0;
 
@@ -88,28 +50,12 @@ export default function ProfilesPage(){
           {(s.profiles || []).map((p, idx: number)=>(
             <div key={p.id} className="card">
               <div style={{ fontWeight:800 }}>{`Profile ${idx+1}`}</div>
-              <div className="hint" style={{ marginTop:6 }}>
-                {typed[p.id] ?? p.narrative}
-              </div>
+              <div className="hint" style={{ marginTop:6 }}>{p.narrative}</div>
               <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
                 {(p.themes?.core||[]).map((t:string,i:number)=><span key={`c-${i}`} className="chip">{t}</span>)}
                 {(p.themes?.facets||[]).map((t:string,i:number)=><span key={`f-${i}`} className="chip">{t}</span>)}
               </div>
-              <div className="findings">
-                {(p.jtbd?.who || p.jtbd?.context) && (
-                  <div className="section">
-                    <div className="label">Interview (JTBD) findings — Who</div>
-                    {p.jtbd?.who && <div>{p.jtbd.who}</div>}
-                    {p.jtbd?.context && (
-                      <div className="meta" style={{ marginTop:6 }}>
-                        {p.jtbd.context.role && <span className="chip">{p.jtbd.context.role}</span>}
-                        {p.jtbd.context.work_pattern && <span className="chip">{p.jtbd.context.work_pattern}</span>}
-                        {p.jtbd.context.language_pref && <span className="chip">{p.jtbd.context.language_pref}</span>}
-                        {p.jtbd.context.geo && <span className="chip">{p.jtbd.context.geo}</span>}
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="findings" style={{ marginTop:6 }}>
                 {p.jtbd?.struggling_moment && (
                   <div className="section">
                     <div className="label">Struggling moment</div>

@@ -1,22 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import {
-  CORE_DIMENSIONS, FACET_BLOCKLIST,
-  toSnake, foldToUniversals, normalizeWeights
-} from '@/app/(clusters)/lib/universals';
+import { CORE_DIMENSIONS, FACET_BLOCKLIST, toSnake, foldToUniversalsWithFacetWeights, normalizeWeights, pickCriticalFacets } from '@/app/(clusters)/lib/universals';
 
-/* ---------- Segmentation & helpers ---------- */
-function normalizeBlocks(raw:string){
-  const hasHeaders=/(^|\n)\s*(interview|participant)\s*\d+/i.test(raw);
-  let blocks:string[]=[];
-  if (hasHeaders){ blocks = raw.split(/(?:^|\n)(?=(?:\s*)(?:interview|participant)\s*\d+)/ig); }
-  else if (/\n\s*\n/.test(raw)){ blocks = raw.split(/\n\s*\n+/); }
-  else { blocks = [raw]; }
-  return blocks.map(s=>s.trim()).filter(Boolean).slice(0,15).map((text,i)=>({ id:String(i+1), text }));
+// -------- Segmentation --------
+function segmentInterviews(raw: string): Array<{ id: string; text: string }> {
+  const hasHeaders = /(^|\n)\s*(interview|participant)\s*\d+/i.test(raw);
+  let blocks: string[] = [];
+  if (hasHeaders) {
+    blocks = raw.split(/(?:^|\n)(?=(?:\s*)(?:interview|participant)\s*\d+)/ig);
+  } else if (/\n\s*\n/.test(raw)) {
+    blocks = raw.split(/\n\s*\n+/);
+  } else {
+    blocks = [raw];
+  }
+  return blocks.map(s => s.trim()).filter(Boolean).slice(0, 15).map((text, i) => ({ id: String(i + 1), text }));
 }
 
-function detectAnchorFromText(text:string): string {
-  const t=text.toLowerCase();
+// -------- Timeouts & small pool --------
+function withTimeout<T>(p: Promise<T>, ms: number, label = 'op'): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+    p.then(v => { clearTimeout(id); resolve(v); }).catch(e => { clearTimeout(id); reject(e); });
+  });
+}
+
+async function poolMap<T, R>(items: T[], limit: number, fn: (t: T, idx: number) => Promise<R>): Promise<R[]> {
+  const out: R[] = []; let i = 0;
+  async function run(): Promise<void> {
+    const idx = i++; if (idx >= items.length) return;
+    out[idx] = await fn(items[idx], idx);
+    await run();
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return out;
+}
+
+// -------- Heuristic anchor (rare fallback) --------
+function detectAnchorFromText(text: string): string {
+  const t = text.toLowerCase();
   if (/\btrust|consistent|referral|rotation|re[-\s]?explain\b/.test(t)) return 'trust';
   if (/\b(expensive|afford|budget|price|pricing|cost|costs|fee|fees|would pay)\b/.test(t) || /\$\s*\d+/.test(text)) return 'cost';
   if (/\bschedul|flexible|random times|non[-\s]?traditional|until midnight|overnight|12[-\s]?hour|shift|handoff\b/.test(t)) return 'flexibility';
@@ -27,25 +48,7 @@ function detectAnchorFromText(text:string): string {
   return '';
 }
 
-/* ---------- Timeouts & concurrency ---------- */
-function withTimeout<T>(p:Promise<T>, ms:number, label='op'):Promise<T>{
-  return new Promise((resolve,reject)=>{
-    const id=setTimeout(()=>reject(new Error(`${label} timeout after ${ms}ms`)),ms);
-    p.then(v=>{clearTimeout(id); resolve(v);}).catch(e=>{clearTimeout(id); reject(e);});
-  });
-}
-async function poolMap<T,R>(items:T[], limit:number, fn:(t:T, idx:number)=>Promise<R>):Promise<R[]>{
-  const out:R[]=[]; let i=0;
-  async function run(k:number):Promise<void>{
-    const idx=i++; if(idx>=items.length) return;
-    out[idx] = await fn(items[idx], idx);
-    await run(k);
-  }
-  await Promise.all(Array.from({length:Math.min(limit,items.length)},(_,k)=>run(k)));
-  return out;
-}
-
-/* ---------- LLM helpers ---------- */
+// -------- Types --------
 interface JTBDContext { role?: string; geo?: string; work_pattern?: string; language_pref?: string }
 interface JTBDSentence { text?: string; tags?: string[] }
 interface JTBDPayload {
@@ -61,6 +64,7 @@ interface JTBDPayload {
   sentences?: JTBDSentence[];
   [k: string]: unknown;
 }
+
 interface GeneratedProfile {
   id: string;
   title: string;
@@ -79,7 +83,8 @@ interface GeneratedProfile {
   };
 }
 
-async function jtbdNormalize(client:OpenAI, id:string, text:string): Promise<JTBDPayload>{
+// -------- LLM helpers --------
+async function jtbdNormalize(client: OpenAI, id: string, text: string): Promise<JTBDPayload> {
   const sys = `
 Normalize an interview into JTBD fields and tag internal sentences.
 STRICT JSON ONLY:
@@ -88,99 +93,106 @@ No invented numbers. Keep sentences verbatim (light trims ok).
 `.trim();
   const r = await withTimeout(
     client.chat.completions.create({
-      model:'gpt-4o-mini', temperature:0.2, max_tokens:700, response_format:{type:'json_object'},
-      messages:[ {role:'system',content:sys}, {role:'user',content:`INTERVIEW ${id}\n${text.slice(0,3000)}`} ]
+      model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 700, response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: `INTERVIEW ${id}\n${text.slice(0, 3000)}` }
+      ]
     }),
     25000, 'jtbdNormalize'
   );
-  let out: JTBDPayload = {}; try{ out=JSON.parse(r.choices?.[0]?.message?.content||'{}'); }catch{}
+  let out: JTBDPayload = {}; try { out = JSON.parse(r.choices?.[0]?.message?.content || '{}'); } catch { /* no-op */ }
   return out;
 }
-async function miniPS(client:OpenAI, fields:JTBDPayload){
-  const sys=`Rewrite JTBD fields into one 2–3 sentence narrative (plain English). No snake_case. No invented numbers.`.trim();
-  const user=JSON.stringify({
-    who:fields.who||'',context:fields.context||{},struggling_moment:fields.struggling_moment||'',
-    jobs_to_be_done:fields.jobs_to_be_done||[],outcomes:fields.outcomes||[]
-  },null,2);
+
+async function miniPS(client: OpenAI, fields: JTBDPayload) {
+  const sys = `Rewrite JTBD fields into one 2–3 sentence narrative (plain English). Include the person's name and relevant context if present. No snake_case. No invented numbers.`.trim();
+  const user = JSON.stringify({
+    who: fields.who || '', context: fields.context || {}, struggling_moment: fields.struggling_moment || '',
+    jobs_to_be_done: fields.jobs_to_be_done || [], outcomes: fields.outcomes || []
+  }, null, 2);
   const r = await withTimeout(
     client.chat.completions.create({
-      model:'gpt-4o-mini', temperature:0.2, max_tokens:180,
-      messages:[ {role:'system',content:sys}, {role:'user',content:`Make one concise narrative:\n${user}`} ]
+      model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 180,
+      messages: [ { role: 'system', content: sys }, { role: 'user', content: `Make one concise narrative:\n${user}` } ]
     }),
     15000, 'miniPS'
   );
-  return (r.choices?.[0]?.message?.content||'').trim();
-}
-function fallbackNarrative(fields:JTBDPayload, text:string){
-  const who = fields?.who || '';
-  const struggle = fields?.struggling_moment || '';
-  const want = (fields?.outcomes||[])[0] || '';
-  const cleaned = (who||struggle||want)
-    ? `${who? who + ' — ':''}${struggle||''}${(struggle&&want)?' ':' '}${want? ('Ultimately, ' + want):''}`.trim()
-    : text.slice(0,220);
-  return cleaned || 'Interview summary unavailable.';
+  return (r.choices?.[0]?.message?.content || '').trim();
 }
 
-/* ---------- Main ---------- */
+function fallbackNarrative(fields: JTBDPayload, text: string) {
+  const who = fields?.who || '';
+  const ctx = fields?.context ? Object.values(fields.context).filter(Boolean).join(', ') : '';
+  const struggle = fields?.struggling_moment || '';
+  const want = (fields?.outcomes || [])[0] || '';
+  const lead = [who, ctx].filter(Boolean).join(' — ');
+  const cleaned = [lead, struggle, want ? `Ultimately, ${want}` : ''].filter(Boolean).join(' ').trim();
+  return cleaned || text.slice(0, 220);
+}
+
+// -------- Main --------
 export async function POST(req: NextRequest) {
   try {
-    const { notes = "" } = await req.json() || {};
-    const blocks = normalizeBlocks(String(notes||''));
+    const { notes = '' } = await req.json() || {};
+    const blocks = segmentInterviews(String(notes || ''));
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ profiles:[], theme_universe:[], matrix:[], summary:{anchor_coverage:[], top_emergents:[]}, note:'OPENAI_API_KEY missing' }, { status:200 });
+      return NextResponse.json({ profiles: [], theme_universe: [], matrix: [], summary: { anchor_coverage: [], top_emergents: [] }, note: 'OPENAI_API_KEY missing' }, { status: 200 });
     }
     if (!blocks.length) {
-      return NextResponse.json({ profiles:[], theme_universe:[], matrix:[], summary:{anchor_coverage:[], top_emergents:[]}, note:'Paste your JTBD interview notes to generate profiles.' }, { status:200 });
+      return NextResponse.json({ profiles: [], theme_universe: [], matrix: [], summary: { anchor_coverage: [], top_emergents: [] }, note: 'Paste your JTBD interview notes to generate profiles.' }, { status: 200 });
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const profiles: GeneratedProfile[] = []; const matrix: Array<[string, Record<string, number>]> = [];
-    const tagTotals = new Map<string, number>();   // accumulate final weights for summary
-    const themeSet  = new Set<string>();           // expose theme_universe
+    const profiles: GeneratedProfile[] = [];
+    const matrix: Array<[string, Record<string, number>]> = [];
+    const coreTotals = new Map<string, number>();
+    const facetTotals = new Map<string, number>();
+    const universe = new Set<string>();
 
     const results = await poolMap(blocks, 3, async (block) => {
       try {
         const jtbd = await jtbdNormalize(client, block.id, block.text);
-        const sentences: JTBDSentence[] = Array.isArray(jtbd?.sentences) ? jtbd.sentences as JTBDSentence[] : [];
+        const sentences: JTBDSentence[] = Array.isArray(jtbd?.sentences) ? jtbd.sentences : [];
 
         // Collect raw tags from JTBD (pains + sentence tags)
-        const raw:string[] = [];
-  (Array.isArray(jtbd?.pains) ? jtbd.pains : []).forEach((p)=>{ if(p?.tag) raw.push(toSnake(p.tag)); });
-  sentences.forEach((s)=> (Array.isArray(s?.tags)? s.tags : []).forEach((t)=> raw.push(toSnake(String(t)))));
+        const raw: string[] = [];
+        (Array.isArray(jtbd?.pains) ? jtbd.pains : []).forEach((p) => { if (p?.tag) raw.push(toSnake(p.tag)); });
+        sentences.forEach((s) => (Array.isArray(s?.tags) ? s.tags : []).forEach((t) => raw.push(toSnake(String(t)))));
 
-        // Map to universals → core weights + facets
-        const { coreWeights, facets } = foldToUniversals(raw);
+        // Map to universals with facet weights
+        const { coreWeights, facetWeights } = foldToUniversalsWithFacetWeights(raw);
 
-        // If no core dimension inferred, detect from text to avoid orphan
+        // Fallback: ensure at least one core anchor
         if (coreWeights.size === 0) {
           const det = detectAnchorFromText(block.text);
-            if (det && (CORE_DIMENSIONS as string[]).includes(det)) {
-              coreWeights.set(det as typeof CORE_DIMENSIONS[number], (coreWeights.get(det as typeof CORE_DIMENSIONS[number])||0) + 1);
-            }
+          if (det && (CORE_DIMENSIONS as string[]).includes(det)) {
+            coreWeights.set(det as typeof CORE_DIMENSIONS[number], (coreWeights.get(det as typeof CORE_DIMENSIONS[number]) || 0) + 1);
+          }
         }
 
-        // Normalize to coarse magnitudes and build final sets
         const theme_weights = normalizeWeights(coreWeights);
         const coreThemes = Array.from(coreWeights.keys());
-        const facetThemes = Array.from(facets).filter(f => !FACET_BLOCKLIST.has(f));
+        const criticalFacets = pickCriticalFacets(facetWeights, 3);
 
-        // Update totals & universe (summary)
-        Object.keys(theme_weights).forEach(k=>{
-          tagTotals.set(k, (tagTotals.get(k)||0) + theme_weights[k]);
-          themeSet.add(k);
+        // Update totals & universe
+        Object.keys(theme_weights).forEach((k) => {
+          coreTotals.set(k, (coreTotals.get(k) || 0) + theme_weights[k]);
+          universe.add(k);
         });
-        facetThemes.forEach(f=> themeSet.add(f));
+        criticalFacets.forEach((f) => { if (!FACET_BLOCKLIST.has(f)) { facetTotals.set(f, (facetTotals.get(f) || 0) + 1); universe.add(f); } });
 
         // Mini narrative
-        let narrative=''; try { narrative = await miniPS(client, jtbd); } catch { narrative = fallbackNarrative(jtbd, block.text); }
+        let narrative = '';
+        try { narrative = await miniPS(client, jtbd); } catch { narrative = fallbackNarrative(jtbd, block.text); }
 
         // Push profile
         profiles.push({
           id: block.id,
           title: '',
           narrative,
-          themes: { core: coreThemes, facets: facetThemes },
+          themes: { core: coreThemes, facets: criticalFacets },
           theme_weights,
           jtbd: {
             who: jtbd?.who || '',
@@ -196,49 +208,43 @@ export async function POST(req: NextRequest) {
 
         // matrix row
         matrix.push([block.id, theme_weights]);
-        return { ok:true };
-      } catch(e) {
-        profiles.push({ id:block.id, title:'', narrative:block.text.slice(0,220), themes:{ core:[], facets:[] }, theme_weights:{}, jtbd:{} } as GeneratedProfile);
+        return { ok: true };
+      } catch (e) {
+        profiles.push({ id: block.id, title: '', narrative: block.text.slice(0, 220), themes: { core: [], facets: [] }, theme_weights: {}, jtbd: {} } as GeneratedProfile);
         matrix.push([block.id, {}]);
-        return { ok:false, note: e instanceof Error ? e.message : 'One interview failed to parse.' };
+        return { ok: false, note: e instanceof Error ? e.message : 'One interview failed to parse.' };
       }
     });
 
     // Deterministic order: by numeric id
-    profiles.sort((a,b)=> Number(a.id) - Number(b.id));
-  matrix.sort((a,b)=> Number(a[0]) - Number(b[0]));
+    profiles.sort((a, b) => Number(a.id) - Number(b.id));
+    matrix.sort((a, b) => Number(a[0]) - Number(b[0]));
 
-    // Build summary from dimension totals
-    const coreMap = new Map<string,number>();
-    const facetMap= new Map<string,number>();
-    tagTotals.forEach((count, tag) => {
-      if ((CORE_DIMENSIONS as string[]).includes(tag)) coreMap.set(tag, (coreMap.get(tag)||0) + count);
-      else if (!FACET_BLOCKLIST.has(tag)) facetMap.set(tag, (facetMap.get(tag)||0) + count);
-    });
-    const toArr = (m:Map<string,number>) =>
-      Array.from(m.entries()).sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
-        .map(([tag,count])=>({ tag, count: Number(count.toFixed(2)) }));
+    // Build summary
+    const toArr = (m: Map<string, number>) =>
+      Array.from(m.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([tag, count]) => ({ tag, count: Number(count.toFixed(2)) }));
 
-    const summary = { anchor_coverage: toArr(coreMap), top_emergents: toArr(facetMap).slice(0,12) };
+    const summary = { anchor_coverage: toArr(coreTotals), top_emergents: toArr(facetTotals).slice(0, 12) };
 
-    const anyFail = results.some(r=>!r?.ok);
+    const anyFail = results.some(r => !r?.ok);
     const note = anyFail
       ? 'Some interviews could not be fully parsed. Profiles are partially generated; you can still proceed.'
       : '';
 
     return NextResponse.json({
       profiles,
-      theme_universe: Array.from(themeSet),
+      theme_universe: Array.from(universe),
       matrix,
       summary,
       note
-    }, { status:200 });
+    }, { status: 200 });
 
   } catch (e) {
     return NextResponse.json({
-      profiles:[], theme_universe:[], matrix:[],
-      summary:{ anchor_coverage:[], top_emergents:[] },
+      profiles: [], theme_universe: [], matrix: [],
+      summary: { anchor_coverage: [], top_emergents: [] },
       note: e instanceof Error ? e.message : 'Profiles generation had an issue. Paste JTBD interview notes and try again.'
-    }, { status:200 });
+    }, { status: 200 });
   }
 }

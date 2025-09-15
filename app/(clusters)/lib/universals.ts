@@ -39,6 +39,12 @@ export const FACETS_TO_CORE: Record<string, CoreDimensionId> = {
   work_travel: 'flexibility'
 };
 
+/** Facets that are mostly context (don’t display as emergents on cards) */
+export const CONTEXT_FACETS = new Set<string>([
+  'work_travel', 'geo', 'language_pref', 'family_structure', 'household_composition',
+  'role_title', 'industry'
+]);
+
 /** Phrase → Core or Facet (lowercased; snake or space OK) */
 const SYNONYM_MAP: Record<string, string> = {
   // Core synonyms (map directly to a core id)
@@ -130,6 +136,24 @@ export function foldToUniversals(rawTags: string[]): { coreWeights: Map<CoreDime
   return { coreWeights, facets };
 }
 
+/** Fold a bag of raw tags into core dimension & facet weights */
+export function foldToUniversalsWithFacetWeights(rawTags: string[]): {
+  coreWeights: Map<CoreDimensionId, number>;
+  facetWeights: Map<string, number>;
+} {
+  const coreWeights = new Map<CoreDimensionId, number>();
+  const facetWeights = new Map<string, number>();
+
+  for (const raw of rawTags) {
+    const m = mapPhraseToUniversal(raw);
+    if (m.core) coreWeights.set(m.core, (coreWeights.get(m.core)||0) + 1);
+    if (m.facet && !FACET_BLOCKLIST.has(m.facet)) {
+      if (!CONTEXT_FACETS.has(m.facet)) facetWeights.set(m.facet, (facetWeights.get(m.facet)||0) + 1);
+    }
+  }
+  return { coreWeights, facetWeights };
+}
+
 /** Normalize core weights into coarse magnitudes (0.33/0.67/1.0) */
 export function normalizeWeights(coreWeights: Map<CoreDimensionId, number>): Record<string, 0.33|0.67|1.0> {
   const max = Math.max(1, ...Array.from(coreWeights.values()));
@@ -139,4 +163,14 @@ export function normalizeWeights(coreWeights: Map<CoreDimensionId, number>): Rec
     out[k] = w >= 0.8 ? 1.0 : w >= 0.5 ? 0.67 : 0.33;
   });
   return out;
+}
+
+/** Pick top-N critical facets by weight, excluding context facets */
+export function pickCriticalFacets(facetWeights: Map<string, number>, limit = 3): string[] {
+  return Array
+    .from(facetWeights.entries())
+    .filter(([f]) => !CONTEXT_FACETS.has(f))
+    .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([f]) => f);
 }
