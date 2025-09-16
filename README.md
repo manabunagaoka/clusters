@@ -24,8 +24,8 @@ The system uses 13 Core Dimensions (cost, time, effort, quality, reliability, tr
 
 These changes are additive; you don’t need to modify the cores.
 
-### Known limitations
-- Guarded cores (support, trust, access, reliability, risk) only trigger on explicit phrasing to avoid false positives. Add synonyms for your domain if needed.
-- If the LLM times out or returns low-content, the APIs degrade gracefully (never 500) and fall back to deterministic output; narratives may be simpler in those cases.
-- The starter facet set is intentionally small; add a “facet pack” per vertical to improve expressiveness.
-- Very generic problem statements can yield few themes; include who, struggle, workarounds, and desired outcome for best results.
+### Known limitations (in plain language)
+- We only count “support” when people really mean customer support. Saying “streaming service” isn’t enough; we look for phrases like “talk to a human” or “customer support.”
+- If the AI is busy or unsure, you might see a shorter, simpler summary instead of fancy wording. It’s on purpose so you still get something useful.
+- The “extra detail” vocabulary starts small. Different industries use different words—add a few of your own terms when you work in a new area.
+- Vague inputs lead to vague results. Tell us who the person is, what’s hard, what they try today, and what success looks like.

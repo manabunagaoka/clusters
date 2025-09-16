@@ -53,12 +53,12 @@ export default function Page(){
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Known Limitations</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Known limitations</div>
         <ul style={{ paddingLeft: 18, margin: 0, color: '#334155', lineHeight: 1.8 }}>
-          <li><b>Theme false positives</b>: Guarded cores (support, trust, access, reliability, risk) only trigger on explicit phrasing. If your domain uses different language for these, add synonyms/keywords.</li>
-          <li><b>LLM timeouts/apology text</b>: We fall back to heuristics and deterministic narratives when the LLM is slow or returns low-content. You may see a simpler narrative in those cases.</li>
-          <li><b>Facet coverage</b>: The starter facet map is minimal and intentionally conservative. Add a small “facet pack” per domain to improve expressiveness.</li>
-          <li><b>Ambiguous problem statements</b>: Very generic inputs may yield few themes. Add specifics about who, the struggle, workarounds, and success.</li>
+          <li><b>We only count “support” when people really mean customer support.</b> If someone says “streaming service,” we don’t treat that as support unless they clearly ask for help from a human or a support team.</li>
+          <li><b>If the AI gets busy, you might see a shorter summary.</b> When the AI is slow or unsure, we show a simple, safe version instead of failing. You still get useful output.</li>
+          <li><b>The “detail” vocabulary starts small on purpose.</b> Different industries use different words. As you test in new areas, you can add a few extra terms so the results feel more natural.</li>
+          <li><b>Vague inputs lead to vague results.</b> Tell us who the person is, what’s hard for them, what they try right now, and what “good” looks like. The more concrete the input, the better the output.</li>
         </ul>
       </div>
     </section>
