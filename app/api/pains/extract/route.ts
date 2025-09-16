@@ -22,10 +22,12 @@ const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
   flexibility: [/flex|schedul|shift|overnight|irregular|non[-\s]?traditional|coordina|logistic|handoff/i],
   choice:      [/option|choice|variety|compare|too many|scroll/i],
   information: [/info|content|find|discover|fragment|where.*find|limited selection/i],
-  risk:        [/risk|uncertain|lock|renew|cancel|penalty/i],
+  // risk only when there is lock-in/penalty/contract language (not mere renew/cancel)
+  risk:        [/risk|uncertain|lock[-\s]?in|early termination|cancellation penalty|12[-\s]?month|contract/i],
   support:     [/support|help|service|assist|human available/i],
   access:      [/access|coverage|eligib|inclusion|language|bilingual/i],
-  value:       [/value|worth/i],
+  // value handles renew/cancel/worth-it language
+  value:       [/value|worth|renew|cancel|renewal/i],
 };
 
 /* ================= Text utilities ================= */
