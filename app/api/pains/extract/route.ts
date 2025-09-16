@@ -13,7 +13,7 @@ type CoreId = typeof CORES[number];
 
 /* ================= Heuristics (domain-agnostic) ================= */
 const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
-  cost:        [/cost|price|fee|budget|afford|pay|expens/i],
+  cost:        [/cost|price|fee|budget|afford|pay|expens|save\s+money|saving\s+money/i],
   time:        [/time|wait|speed|fast|slow|delay|hours/i],
   effort:      [/effort|friction|hard|cumbersome|overhead|burden/i],
   quality:     [/quality|fit|accur|relevant|good|bad/i],
@@ -129,6 +129,8 @@ Rules:
 function pickThemes(consensus: Record<CoreId, number>, heur: Record<CoreId, number>, why: Record<CoreId, string>) {
   const THRESH = 0.25;
   const STRONG = 0.4; // allow a theme without heuristic support only if consensus is strong
+  // Guarded cores require explicit heuristic evidence to avoid stray inclusions from LLM noise
+  const GUARDED = new Set<CoreId>(['support','trust','access','reliability','risk']);
   const ranked = CORES.map(c => [c, consensus[c]] as [CoreId, number])
                       .sort((a,b)=> b[1]-a[1]);
 
@@ -137,7 +139,10 @@ function pickThemes(consensus: Record<CoreId, number>, heur: Record<CoreId, numb
     .filter(([,v])=> v >= THRESH)
     .map(([c])=> c)
     // prefer those with any heuristic evidence, unless consensus is strong
-    .filter((c)=> heur[c] > 0 || consensus[c] >= STRONG)
+    .filter((c)=> {
+      if (GUARDED.has(c)) return heur[c] > 0; // guarded cores must have heuristic support
+      return heur[c] > 0 || consensus[c] >= STRONG;
+    })
     .slice(0, 4);
 
   // Ensure at least 2 when heuristics show >0 for multiple cores

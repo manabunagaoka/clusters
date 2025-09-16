@@ -183,9 +183,15 @@ export async function POST(req: NextRequest) {
         });
         criticalFacets.forEach((f) => { if (!FACET_BLOCKLIST.has(f)) { facetTotals.set(f, (facetTotals.get(f) || 0) + 1); universe.add(f); } });
 
-        // Mini narrative
+        // Mini narrative with guard against apology/low-content responses
         let narrative = '';
-        try { narrative = await miniPS(client, jtbd); } catch { narrative = fallbackNarrative(jtbd, block.text); }
+        try {
+          const n = await miniPS(client, jtbd);
+          const low = /^(i'm sorry|sorry,|it seems|it appears|please provide|could you provide|no specific information)/i.test(n) || n.length < 40;
+          narrative = low ? fallbackNarrative(jtbd, block.text) : n;
+        } catch {
+          narrative = fallbackNarrative(jtbd, block.text);
+        }
 
         // Push profile
         profiles.push({

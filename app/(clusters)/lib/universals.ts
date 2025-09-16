@@ -116,10 +116,12 @@ function inferCoreFromKeyword(base: string): CoreDimensionId | '' {
   if (/(flex|schedul|adapt|custom)/.test(base)) return 'flexibility';
   if (/(option|choice|variety|assort)/.test(base)) return 'choice';
   if (/(info|content|find|discover|fragment)/.test(base)) return 'information';
-  if (/(risk|uncertain|lock|renew|cancel)/.test(base)) return 'risk';
-  if (/(support|help|service)/.test(base)) return 'support';
+  // Risk only on lock-in/penalty/contract terms
+  if (/(risk|uncertain|lock_?in|penalty|contract|early_?termination)/.test(base)) return 'risk';
+  // Support must be explicit, not inferred from UI confusion
+  if (/(support|help|human_support|customer_service|agent)/.test(base)) return 'support';
   if (/(access|coverage|eligib|inclusion)/.test(base)) return 'access';
-  if (/(value|worth)/.test(base)) return 'value';
+  if (/(value|worth|renew|cancel|renewal)/.test(base)) return 'value';
   return '';
 }
 
