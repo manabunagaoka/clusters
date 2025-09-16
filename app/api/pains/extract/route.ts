@@ -128,19 +128,26 @@ Rules:
 /* Final pick (2–4 themes) with diversity safeguards */
 function pickThemes(consensus: Record<CoreId, number>, heur: Record<CoreId, number>, why: Record<CoreId, string>) {
   const THRESH = 0.25;
+  const STRONG = 0.4; // allow a theme without heuristic support only if consensus is strong
   const ranked = CORES.map(c => [c, consensus[c]] as [CoreId, number])
                       .sort((a,b)=> b[1]-a[1]);
 
   // Keep 2–4 above threshold
-  let selected = ranked.filter(([,v])=> v >= THRESH).slice(0, 4).map(([c])=> c);
+  let selected = ranked
+    .filter(([,v])=> v >= THRESH)
+    .map(([c])=> c)
+    // prefer those with any heuristic evidence, unless consensus is strong
+    .filter((c)=> heur[c] > 0 || consensus[c] >= STRONG)
+    .slice(0, 4);
 
   // Ensure at least 2 when heuristics show >0 for multiple cores
   if (selected.length < 2) {
-    const topHeur = CORES.map(c => [c, heur[c]] as [CoreId, number])
-                         .filter(([,v])=> v > 0)
-                         .sort((a,b)=> b[1]-a[1])
-                         .slice(0, 2)
-                         .map(([c])=> c);
+    const topHeur = CORES
+      .map(c => [c, heur[c]] as [CoreId, number])
+      .filter(([,v])=> v > 0)
+      .sort((a,b)=> b[1]-a[1])
+      .slice(0, 2)
+      .map(([c])=> c);
     selected = Array.from(new Set([...selected, ...topHeur])).slice(0, 2);
   }
 
