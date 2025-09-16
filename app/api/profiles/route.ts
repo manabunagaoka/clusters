@@ -1,90 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { CORE_DIMENSIONS, FACET_BLOCKLIST, toSnake, foldToUniversalsWithFacetWeights, normalizeWeights, pickCriticalFacets } from '@/app/(clusters)/lib/universals';
+import {
+  CORE_DIMENSIONS,
+  toSnake, foldToUniversalsWithFacetWeights, normalizeWeights, pickCriticalFacets
+} from '@/app/(clusters)/lib/universals';
 
-// -------- Segmentation --------
-function segmentInterviews(raw: string): Array<{ id: string; text: string }> {
-  const hasHeaders = /(^|\n)\s*(interview|participant)\s*\d+/i.test(raw);
-  let blocks: string[] = [];
-  if (hasHeaders) {
-    blocks = raw.split(/(?:^|\n)(?=(?:\s*)(?:interview|participant)\s*\d+)/ig);
-  } else if (/\n\s*\n/.test(raw)) {
-    blocks = raw.split(/\n\s*\n+/);
-  } else {
-    blocks = [raw];
-  }
-  return blocks.map(s => s.trim()).filter(Boolean).slice(0, 15).map((text, i) => ({ id: String(i + 1), text }));
+/* ------------ Segmentation ------------ */
+function segmentInterviews(raw:string){
+  const hasHeaders=/(^|\n)\s*(interview|participant)\s*\d+/i.test(raw);
+  let blocks:string[]=[];
+  if (hasHeaders){ blocks = raw.split(/(?:^|\n)(?=(?:\s*)(?:interview|participant)\s*\d+)/ig); }
+  else if (/\n\s*\n/.test(raw)){ blocks = raw.split(/\n\s*\n+/); }
+  else { blocks = [raw]; }
+  return blocks.map(s=>s.trim()).filter(Boolean).slice(0,15).map((text,i)=>({ id:String(i+1), text }));
 }
 
-// -------- Timeouts & small pool --------
-function withTimeout<T>(p: Promise<T>, ms: number, label = 'op'): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const id = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
-    p.then(v => { clearTimeout(id); resolve(v); }).catch(e => { clearTimeout(id); reject(e); });
+/* ------------ Timeouts & pool ------------ */
+function withTimeout<T>(p:Promise<T>, ms:number, label='op'):Promise<T>{
+  return new Promise((resolve,reject)=>{
+    const id=setTimeout(()=>reject(new Error(`${label} timeout after ${ms}ms`)),ms);
+    p.then(v=>{clearTimeout(id); resolve(v);}).catch(e=>{clearTimeout(id); reject(e);});
   });
 }
-
-async function poolMap<T, R>(items: T[], limit: number, fn: (t: T, idx: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = []; let i = 0;
-  async function run(): Promise<void> {
-    const idx = i++; if (idx >= items.length) return;
+async function poolMap<T,R>(items:T[], limit:number, fn:(t:T, idx:number)=>Promise<R>):Promise<R[]>{
+  const out:R[]=[]; let i=0;
+  async function run():Promise<void>{
+    const idx=i++; if(idx>=items.length) return;
     out[idx] = await fn(items[idx], idx);
     await run();
   }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  await Promise.all(Array.from({length:Math.min(limit,items.length)}, run));
   return out;
 }
 
-// -------- Heuristic anchor (rare fallback) --------
-function detectAnchorFromText(text: string): string {
-  const t = text.toLowerCase();
-  if (/\btrust|consistent|referral|rotation|re[-\s]?explain\b/.test(t)) return 'trust';
-  if (/\b(expensive|afford|budget|price|pricing|cost|costs|fee|fees|would pay)\b/.test(t) || /\$\s*\d+/.test(text)) return 'cost';
-  if (/\bschedul|flexible|random times|non[-\s]?traditional|until midnight|overnight|12[-\s]?hour|shift|handoff\b/.test(t)) return 'flexibility';
-  if (/\btoo many|scrolling|so many options|keep comparing\b/.test(t)) return 'choice';
-  if (/\bwhere.*find|which app|limited selection|content.+scattered|discover\b/.test(t)) return 'information';
-  if (/\bresearch|reading reviews|hours comparing|information overload\b/.test(t)) return 'time';
-  if (/\bworth it|renew|renewal|cancel\b/.test(t)) return 'value';
-  return '';
-}
-
-// -------- Types --------
-interface JTBDContext { role?: string; geo?: string; work_pattern?: string; language_pref?: string }
-interface JTBDSentence { text?: string; tags?: string[] }
-interface JTBDPayload {
-  who?: string;
-  context?: JTBDContext;
-  struggling_moment?: string;
-  jobs_to_be_done?: string[];
-  pains?: Array<{ tag?: string; confidence?: number }>;
-  workarounds?: string[];
-  selection_criteria?: string[];
-  anxieties?: string[];
-  outcomes?: string[];
-  sentences?: JTBDSentence[];
-  [k: string]: unknown;
-}
-
-interface GeneratedProfile {
-  id: string;
-  title: string;
-  narrative: string;
-  themes: { core: string[]; facets: string[] };
-  theme_weights: Record<string, number>;
-  jtbd: {
-    who?: string;
-    context?: JTBDContext;
-    struggling_moment?: string;
-    jobs?: string[];
-    workarounds?: string[];
-    selection_criteria?: string[];
-    anxieties?: string[];
-    outcomes?: string[];
-  };
-}
-
-// -------- LLM helpers --------
-async function jtbdNormalize(client: OpenAI, id: string, text: string): Promise<JTBDPayload> {
+/* ------------ LLM helpers ------------ */
+async function jtbdNormalize(client:OpenAI, id:string, text:string): Promise<Record<string, unknown>>{
   const sys = `
 Normalize an interview into JTBD fields and tag internal sentences.
 STRICT JSON ONLY:
@@ -93,101 +43,129 @@ No invented numbers. Keep sentences verbatim (light trims ok).
 `.trim();
   const r = await withTimeout(
     client.chat.completions.create({
-      model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 700, response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: `INTERVIEW ${id}\n${text.slice(0, 3000)}` }
-      ]
+      model:'gpt-4o-mini', temperature:0.2, max_tokens:700, response_format:{type:'json_object'},
+      messages:[ {role:'system',content:sys}, {role:'user',content:`INTERVIEW ${id}\n${text.slice(0,3000)}`} ]
     }),
     25000, 'jtbdNormalize'
   );
-  let out: JTBDPayload = {}; try { out = JSON.parse(r.choices?.[0]?.message?.content || '{}'); } catch { /* no-op */ }
+  let out: Record<string, unknown>={}; try{ out=JSON.parse(r.choices?.[0]?.message?.content||'{}'); }catch{}
   return out;
 }
 
-async function miniPS(client: OpenAI, fields: JTBDPayload) {
-  const sys = `Rewrite JTBD fields into one 2–3 sentence narrative (plain English). Include the person's name and relevant context if present. No snake_case. No invented numbers.`.trim();
-  const user = JSON.stringify({
-    who: fields.who || '', context: fields.context || {}, struggling_moment: fields.struggling_moment || '',
-    jobs_to_be_done: fields.jobs_to_be_done || [], outcomes: fields.outcomes || []
-  }, null, 2);
+async function miniPS(client:OpenAI, fields:Record<string, unknown>){
+  const sys = `Write a 2–3 sentence narrative. Include name + context if present (role, work pattern), then the struggle and desired outcome. No snake_case. No invented numbers.`.trim();
+  const user=JSON.stringify({
+    who:fields.who||'',
+    context:fields.context||{},
+    struggling_moment:fields.struggling_moment||'',
+    outcomes:fields.outcomes||[]
+  },null,2);
   const r = await withTimeout(
     client.chat.completions.create({
-      model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 180,
-      messages: [ { role: 'system', content: sys }, { role: 'user', content: `Make one concise narrative:\n${user}` } ]
+      model:'gpt-4o-mini', temperature:0.2, max_tokens:200,
+      messages:[ {role:'system',content:sys}, {role:'user',content:`Make one concise narrative:\n${user}`} ]
     }),
     15000, 'miniPS'
   );
-  return (r.choices?.[0]?.message?.content || '').trim();
+  return (r.choices?.[0]?.message?.content||'').trim();
 }
 
-function fallbackNarrative(fields: JTBDPayload, text: string) {
-  const who = fields?.who || '';
-  const ctx = fields?.context ? Object.values(fields.context).filter(Boolean).join(', ') : '';
-  const struggle = fields?.struggling_moment || '';
-  const want = (fields?.outcomes || [])[0] || '';
+function fallbackNarrative(fields:Record<string, unknown>, text:string){
+  const who = String(fields?.who||'').trim();
+  const ctx = fields?.context && typeof fields.context === 'object' ? Object.values(fields.context).filter(Boolean).join(', ') : '';
+  const struggle = String(fields?.struggling_moment||'').trim();
+  const outcomes = Array.isArray(fields?.outcomes) ? fields.outcomes : [];
+  const want = outcomes.length > 0 ? String(outcomes[0] || '').trim() : '';
   const lead = [who, ctx].filter(Boolean).join(' — ');
-  const cleaned = [lead, struggle, want ? `Ultimately, ${want}` : ''].filter(Boolean).join(' ').trim();
-  return cleaned || text.slice(0, 220);
+  const cleaned = [lead, struggle, want?`Ultimately, ${want}`:''].filter(Boolean).join(' ').trim();
+  return cleaned || text.slice(0,220);
 }
 
-// -------- Main --------
+/* ------------ Main ------------ */
 export async function POST(req: NextRequest) {
   try {
-    const { notes = '' } = await req.json() || {};
-    const blocks = segmentInterviews(String(notes || ''));
+    const { notes = "" } = await req.json() || {};
+    const blocks = segmentInterviews(String(notes||''));
+
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ profiles: [], theme_universe: [], matrix: [], summary: { anchor_coverage: [], top_emergents: [] }, note: 'OPENAI_API_KEY missing' }, { status: 200 });
+      return NextResponse.json({
+        profiles:[], theme_universe:[], matrix:[],
+        summary:{ anchor_coverage:[], top_emergents:[] },
+        note:'OPENAI_API_KEY missing'
+      }, { status:200 });
     }
     if (!blocks.length) {
-      return NextResponse.json({ profiles: [], theme_universe: [], matrix: [], summary: { anchor_coverage: [], top_emergents: [] }, note: 'Paste your JTBD interview notes to generate profiles.' }, { status: 200 });
+      return NextResponse.json({
+        profiles:[], theme_universe:[], matrix:[],
+        summary:{ anchor_coverage:[], top_emergents:[] },
+        note:'Paste your JTBD interview notes to generate profiles.'
+      }, { status:200 });
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const profiles: GeneratedProfile[] = [];
-    const matrix: Array<[string, Record<string, number>]> = [];
-    const coreTotals = new Map<string, number>();
-    const facetTotals = new Map<string, number>();
+    const profiles: Record<string, unknown>[] = [];
+    const matrix: unknown[] = [];
+    const totals = new Map<string, number>();     // core totals for summary
+    const facetTotals = new Map<string, number>(); // facets across profiles
     const universe = new Set<string>();
 
-    const results = await poolMap(blocks, 3, async (block) => {
+    await poolMap(blocks, 3, async (block) => {
       try {
-        const jtbd = await jtbdNormalize(client, block.id, block.text);
-        const sentences: JTBDSentence[] = Array.isArray(jtbd?.sentences) ? jtbd.sentences : [];
+        const jtbdRaw = await jtbdNormalize(client, block.id, block.text);
 
-        // Collect raw tags from JTBD (pains + sentence tags)
-        const raw: string[] = [];
-        (Array.isArray(jtbd?.pains) ? jtbd.pains : []).forEach((p) => { if (p?.tag) raw.push(toSnake(p.tag)); });
-        sentences.forEach((s) => (Array.isArray(s?.tags) ? s.tags : []).forEach((t) => raw.push(toSnake(String(t)))));
+        // Sanitize all JTBD arrays to strings — prevents React object-child crashes
+        const sanitizeArr = (a:unknown)=> Array.isArray(a) ? a.map((x:unknown)=> String((x as Record<string, unknown>)?.text ?? x ?? '')).filter(Boolean) : [];
+        const jtbd = {
+          who: String(jtbdRaw?.who || ''),
+          context: typeof jtbdRaw?.context === 'object' && jtbdRaw?.context ? jtbdRaw.context : {},
+          struggling_moment: String(jtbdRaw?.struggling_moment || ''),
+          jobs_to_be_done: sanitizeArr(jtbdRaw?.jobs_to_be_done),
+          workarounds: sanitizeArr(jtbdRaw?.workarounds),
+          selection_criteria: sanitizeArr(jtbdRaw?.selection_criteria),
+          anxieties: sanitizeArr(jtbdRaw?.anxieties),
+          outcomes: sanitizeArr(jtbdRaw?.outcomes),
+          sentences: Array.isArray(jtbdRaw?.sentences) ? jtbdRaw.sentences : []
+        };
 
-        // Map to universals with facet weights
+        // Collect raw tags from JTBD pains + sentences
+        const raw:string[] = [];
+        (Array.isArray(jtbdRaw?.pains) ? jtbdRaw.pains : []).forEach((p:unknown)=>{ 
+          const pain = p as Record<string, unknown>;
+          if(pain?.tag) raw.push(toSnake(String(pain.tag))); 
+        });
+        jtbd.sentences.forEach((s:unknown)=> {
+          const sentence = s as Record<string, unknown>;
+          (Array.isArray(sentence?.tags)? sentence.tags : []).forEach((t:unknown)=> raw.push(toSnake(String(t))));
+        });
+
+        // Map to universals → core & facet weights
         const { coreWeights, facetWeights } = foldToUniversalsWithFacetWeights(raw);
 
-        // Fallback: ensure at least one core anchor
+        // if no cores, infer from JTBD text
         if (coreWeights.size === 0) {
-          const det = detectAnchorFromText(block.text);
-          if (det && (CORE_DIMENSIONS as string[]).includes(det)) {
-            coreWeights.set(det as typeof CORE_DIMENSIONS[number], (coreWeights.get(det as typeof CORE_DIMENSIONS[number]) || 0) + 1);
-          }
+          const txt = [jtbd.struggling_moment, ...jtbd.workarounds, ...jtbd.anxieties].join(' ').toLowerCase();
+          if (/(trust|consisten|referral)/.test(txt)) coreWeights.set('trust' as typeof CORE_DIMENSIONS[number], 1);
+          if (/(cost|price|afford|expens|budget)/.test(txt)) coreWeights.set('cost' as typeof CORE_DIMENSIONS[number], 1);
+          if (/(schedul|overnight|flex)/.test(txt)) coreWeights.set('flexibility' as typeof CORE_DIMENSIONS[number], 1);
         }
 
+        // compress to coarse magnitudes & pick critical facets
         const theme_weights = normalizeWeights(coreWeights);
         const coreThemes = Array.from(coreWeights.keys());
         const criticalFacets = pickCriticalFacets(facetWeights, 3);
 
-        // Update totals & universe
-        Object.keys(theme_weights).forEach((k) => {
-          coreTotals.set(k, (coreTotals.get(k) || 0) + theme_weights[k]);
+        // summary totals/universe
+        Object.keys(theme_weights).forEach(k=>{
+          totals.set(k, (totals.get(k)||0) + theme_weights[k]);
           universe.add(k);
         });
-        criticalFacets.forEach((f) => { if (!FACET_BLOCKLIST.has(f)) { facetTotals.set(f, (facetTotals.get(f) || 0) + 1); universe.add(f); } });
+        criticalFacets.forEach(f => { facetTotals.set(f, (facetTotals.get(f)||0) + 1); universe.add(f); });
 
-        // Mini narrative
+        // Narrative includes name + context
         let narrative = '';
         try { narrative = await miniPS(client, jtbd); } catch { narrative = fallbackNarrative(jtbd, block.text); }
 
-        // Push profile
         profiles.push({
           id: block.id,
           title: '',
@@ -195,56 +173,50 @@ export async function POST(req: NextRequest) {
           themes: { core: coreThemes, facets: criticalFacets },
           theme_weights,
           jtbd: {
-            who: jtbd?.who || '',
-            context: jtbd?.context || {},
-            struggling_moment: jtbd?.struggling_moment || '',
-            jobs: Array.isArray(jtbd?.jobs_to_be_done) ? jtbd.jobs_to_be_done : [],
-            workarounds: Array.isArray(jtbd?.workarounds) ? jtbd.workarounds : [],
-            selection_criteria: Array.isArray(jtbd?.selection_criteria) ? jtbd.selection_criteria : [],
-            anxieties: Array.isArray(jtbd?.anxieties) ? jtbd.anxieties : [],
-            outcomes: Array.isArray(jtbd?.outcomes) ? jtbd.outcomes : []
+            who: jtbd.who,
+            context: jtbd.context,
+            struggling_moment: jtbd.struggling_moment,
+            jobs: jtbd.jobs_to_be_done,
+            workarounds: jtbd.workarounds,
+            selection_criteria: jtbd.selection_criteria,
+            anxieties: jtbd.anxieties,
+            outcomes: jtbd.outcomes
           }
         });
 
-        // matrix row
         matrix.push([block.id, theme_weights]);
-        return { ok: true };
-      } catch (e) {
-        profiles.push({ id: block.id, title: '', narrative: block.text.slice(0, 220), themes: { core: [], facets: [] }, theme_weights: {}, jtbd: {} } as GeneratedProfile);
+      } catch {
+        profiles.push({ id:block.id, title:'', narrative:block.text.slice(0,220), themes:{ core:[], facets:[] }, theme_weights:{}, jtbd:{} });
         matrix.push([block.id, {}]);
-        return { ok: false, note: e instanceof Error ? e.message : 'One interview failed to parse.' };
       }
     });
 
-    // Deterministic order: by numeric id
-    profiles.sort((a, b) => Number(a.id) - Number(b.id));
-    matrix.sort((a, b) => Number(a[0]) - Number(b[0]));
+    // sort by interview order
+    profiles.sort((a,b)=> Number((a as Record<string, unknown>).id) - Number((b as Record<string, unknown>).id));
+    matrix.sort((a:unknown,b:unknown)=> Number((a as unknown[])[0]) - Number((b as unknown[])[0]));
 
-    // Build summary
-    const toArr = (m: Map<string, number>) =>
-      Array.from(m.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([tag, count]) => ({ tag, count: Number(count.toFixed(2)) }));
+    const toArr = (m:Map<string,number>) =>
+      Array.from(m.entries()).sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
+        .map(([tag,count])=>({ tag, count: Number(count.toFixed(2)) }));
 
-    const summary = { anchor_coverage: toArr(coreTotals), top_emergents: toArr(facetTotals).slice(0, 12) };
-
-    const anyFail = results.some(r => !r?.ok);
-    const note = anyFail
-      ? 'Some interviews could not be fully parsed. Profiles are partially generated; you can still proceed.'
-      : '';
+    const summary = {
+      anchor_coverage: toArr(totals).filter(x => (CORE_DIMENSIONS as string[]).includes(x.tag)),
+      top_emergents: toArr(facetTotals).slice(0,12)
+    };
 
     return NextResponse.json({
       profiles,
       theme_universe: Array.from(universe),
       matrix,
       summary,
-      note
-    }, { status: 200 });
+      note: ''
+    }, { status:200 });
 
-  } catch (e) {
+  } catch (e: unknown) {
     return NextResponse.json({
-      profiles: [], theme_universe: [], matrix: [],
-      summary: { anchor_coverage: [], top_emergents: [] },
-      note: e instanceof Error ? e.message : 'Profiles generation had an issue. Paste JTBD interview notes and try again.'
-    }, { status: 200 });
+      profiles:[], theme_universe:[], matrix:[],
+      summary:{ anchor_coverage:[], top_emergents:[] },
+      note: (e as Error)?.message || 'Profiles generation had an issue. Paste JTBD interview notes and try again.'
+    }, { status:200 });
   }
 }

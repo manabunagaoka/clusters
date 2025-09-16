@@ -269,7 +269,7 @@ export const useAppStore = create<AppState & {
     canSeeInsights() {
       const s = get(); return !!s.result
     },
-  }), { name: 'clusters-student-v3', version: 3 })
+  }), { name: 'clusters-student-jtbd-v1', version: 1 })
     : ((set, get) => ({
       // Wizard defaults
       title: '',

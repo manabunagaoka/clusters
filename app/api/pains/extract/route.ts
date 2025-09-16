@@ -8,9 +8,6 @@ const CORES = [
 ] as const;
 type CoreId = typeof CORES[number];
 
-// reserved for potential future filtering of meta labels
-// const BLOCKLIST = new Set(['snake_case','misc','unknown','general','other']);
-
 /* ================= Heuristics (domain-agnostic) ================= */
 const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
   cost:        [/cost|price|fee|budget|afford|pay|expens/i],
@@ -22,10 +19,12 @@ const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
   flexibility: [/flex|schedul|shift|overnight|irregular|non[-\s]?traditional|coordina|logistic|handoff/i],
   choice:      [/option|choice|variety|compare|too many|scroll/i],
   information: [/info|content|find|discover|fragment|where.*find|limited selection/i],
-  risk:        [/risk|uncertain|lock|renew|cancel|penalty/i],
+  // IMPORTANT: 'risk' only when there is *lock-in/penalty/contract* language, not just renew/cancel
+  risk:        [/risk|uncertain|lock[-\s]?in|early termination|cancellation penalty|12[-\s]?month|contract/i],
   support:     [/support|help|service|assist|human available/i],
   access:      [/access|coverage|eligib|inclusion|language|bilingual/i],
-  value:       [/value|worth/i],
+  // 'value' handles renew/cancel/worth-it
+  value:       [/value|worth|renew|cancel|renewal/i],
 };
 
 /* ================= Text utilities ================= */
