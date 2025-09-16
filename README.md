@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Clusters — JTBD Student Edition (MVP)
 
-## Getting Started
+Clusters helps you validate business ideas with the Jobs-To-Be-Done (JTBD) framework. It blends AI for normalization with deterministic mapping into universal themes to keep results repeatable and explainable.
 
-First, run the development server:
+### App overview
+- Next.js App Router (TypeScript, React)
+- APIs: `/api/pains/extract` (theme extraction) and `/api/profiles` (JTBD profiles)
+- Universal themes in `app/(clusters)/lib/universals.ts`
+
+### Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Extensibility
+The system uses 13 Core Dimensions (cost, time, effort, quality, reliability, trust, flexibility, choice, information, risk, support, access, value). For domain nuance, extend these maps:
+- `FACETS_TO_CORE`: add facets mapped to a core (e.g., `subscription_value` → `value`).
+- `SYNONYM_MAP`: add common phrases mapped to a facet or core.
+- `CORE_KEYWORDS`: optionally add domain phrases to the regex lists for better heuristic scoring.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+These changes are additive; you don’t need to modify the cores.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Known limitations
+- Guarded cores (support, trust, access, reliability, risk) only trigger on explicit phrasing to avoid false positives. Add synonyms for your domain if needed.
+- If the LLM times out or returns low-content, the APIs degrade gracefully (never 500) and fall back to deterministic output; narratives may be simpler in those cases.
+- The starter facet set is intentionally small; add a “facet pack” per vertical to improve expressiveness.
+- Very generic problem statements can yield few themes; include who, struggle, workarounds, and desired outcome for best results.

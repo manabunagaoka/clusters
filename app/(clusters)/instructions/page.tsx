@@ -37,6 +37,30 @@ export default function Page(){
           <li><b>Run Analysis → Quality Metrics, Readiness &amp; Clusters → Insights</b> — Review metrics and readiness, then learn segments from Clusters formed from Archetypes. Open Insights to see what this means and next steps.</li>
         </ol>
       </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Extensibility</div>
+        <div style={{ color: '#334155', lineHeight: 1.6, fontSize: 14 }}>
+          Clusters uses a universal set of <b>Core Dimensions</b> (cost, time, effort, quality, reliability, trust, flexibility, choice, information, risk, support, access, value) that work across business domains.
+          For domain nuance, you can extend the <b>Facet</b> and <b>Synonym</b> maps without changing the cores:
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            <li>Add facet → core mappings (e.g., <i>subscription_value</i> → value).</li>
+            <li>Add synonyms to normalize common phrases (e.g., <i>renew</i>/<i>cancel</i> → value).</li>
+            <li>Tune keyword heuristics for a vertical when jargon differs.</li>
+          </ul>
+          The APIs are designed to never 500 and to degrade gracefully (timeouts, deterministic ordering), so you can test safely, then tune as needed.
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Known Limitations</div>
+        <ul style={{ paddingLeft: 18, margin: 0, color: '#334155', lineHeight: 1.8 }}>
+          <li><b>Theme false positives</b>: Guarded cores (support, trust, access, reliability, risk) only trigger on explicit phrasing. If your domain uses different language for these, add synonyms/keywords.</li>
+          <li><b>LLM timeouts/apology text</b>: We fall back to heuristics and deterministic narratives when the LLM is slow or returns low-content. You may see a simpler narrative in those cases.</li>
+          <li><b>Facet coverage</b>: The starter facet map is minimal and intentionally conservative. Add a small “facet pack” per domain to improve expressiveness.</li>
+          <li><b>Ambiguous problem statements</b>: Very generic inputs may yield few themes. Add specifics about who, the struggle, workarounds, and success.</li>
+        </ul>
+      </div>
     </section>
   );
 }
