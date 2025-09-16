@@ -173,8 +173,8 @@ export async function POST(req: NextRequest) {
         }
 
         const theme_weights = normalizeWeights(coreWeights);
-        const coreThemes = Array.from(coreWeights.keys());
-        const criticalFacets = pickCriticalFacets(facetWeights, 3);
+            const coreThemes = Array.from(coreWeights.keys());
+            const criticalFacets = pickCriticalFacets(facetWeights, 3);
 
         // Update totals & universe
         Object.keys(theme_weights).forEach((k) => {
@@ -193,22 +193,26 @@ export async function POST(req: NextRequest) {
           narrative = fallbackNarrative(jtbd, block.text);
         }
 
+  // Ensure themes arrays are plain strings (extra safety)
+  const coreList = Array.isArray(coreThemes) ? coreThemes.map((t) => String(t)).filter(Boolean) : [];
+  const facetList = Array.isArray(criticalFacets) ? criticalFacets.map((t) => String(t)).filter(Boolean) : [];
+
         // Push profile
         profiles.push({
           id: block.id,
           title: '',
-          narrative,
-          themes: { core: coreThemes, facets: criticalFacets },
+          narrative: String(narrative || '').trim(),
+          themes: { core: coreList, facets: facetList },
           theme_weights,
           jtbd: {
-            who: jtbd?.who || '',
+            who: String(jtbd?.who || ''),
             context: jtbd?.context || {},
-            struggling_moment: jtbd?.struggling_moment || '',
-            jobs: Array.isArray(jtbd?.jobs_to_be_done) ? jtbd.jobs_to_be_done : [],
-            workarounds: Array.isArray(jtbd?.workarounds) ? jtbd.workarounds : [],
-            selection_criteria: Array.isArray(jtbd?.selection_criteria) ? jtbd.selection_criteria : [],
-            anxieties: Array.isArray(jtbd?.anxieties) ? jtbd.anxieties : [],
-            outcomes: Array.isArray(jtbd?.outcomes) ? jtbd.outcomes : []
+            struggling_moment: String(jtbd?.struggling_moment || ''),
+            jobs: (Array.isArray(jtbd?.jobs_to_be_done) ? jtbd.jobs_to_be_done : []).map((x)=>String(x)),
+            workarounds: (Array.isArray(jtbd?.workarounds) ? jtbd.workarounds : []).map((x)=>String(x)),
+            selection_criteria: (Array.isArray(jtbd?.selection_criteria) ? jtbd.selection_criteria : []).map((x)=>String(x)),
+            anxieties: (Array.isArray(jtbd?.anxieties) ? jtbd.anxieties : []).map((x)=>String(x)),
+            outcomes: (Array.isArray(jtbd?.outcomes) ? jtbd.outcomes : []).map((x)=>String(x))
           }
         });
 

@@ -52,8 +52,26 @@ export default function ProfilesPage(){
               <div style={{ fontWeight:800 }}>{`Profile ${idx+1}`}</div>
               <div className="hint" style={{ marginTop:6 }}>{p.narrative}</div>
               <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
-                {(p.themes?.core||[]).map((t:string,i:number)=><span key={`c-${i}`} className="chip">{t}</span>)}
-                {(p.themes?.facets||[]).map((t:string,i:number)=><span key={`f-${i}`} className="chip">{t}</span>)}
+                {(p.themes?.core||[]).map((t: unknown, i:number)=>{
+                  let label: string;
+                  if (typeof t === 'string') label = t;
+                  else if (typeof t === 'number') label = String(t);
+                  else if (typeof t === 'object' && t !== null) {
+                    if ('tag' in (t as Record<string, unknown>)) label = String((t as Record<string, unknown>).tag);
+                    else label = JSON.stringify(t);
+                  } else label = String(t ?? '');
+                  return <span key={`c-${i}`} className="chip">{label}</span>;
+                })}
+                {(p.themes?.facets||[]).map((t: unknown, i:number)=>{
+                  let label: string;
+                  if (typeof t === 'string') label = t;
+                  else if (typeof t === 'number') label = String(t);
+                  else if (typeof t === 'object' && t !== null) {
+                    if ('tag' in (t as Record<string, unknown>)) label = String((t as Record<string, unknown>).tag);
+                    else label = JSON.stringify(t);
+                  } else label = String(t ?? '');
+                  return <span key={`f-${i}`} className="chip">{label}</span>;
+                })}
               </div>
               <div className="findings" style={{ marginTop:6 }}>
                 {p.jtbd?.struggling_moment && (
@@ -65,31 +83,31 @@ export default function ProfilesPage(){
                 {Array.isArray(p.jtbd?.workarounds) && p.jtbd.workarounds.length>0 && (
                   <div className="section">
                     <div className="label">Workarounds</div>
-                    <ul>{p.jtbd.workarounds.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
+                    <ul>{p.jtbd.workarounds.slice(0,4).map((s: unknown,i:number)=><li key={i}>{typeof s==='string'?s:String(s)}</li>)}</ul>
                   </div>
                 )}
                 {Array.isArray(p.jtbd?.jobs) && p.jtbd.jobs.length>0 && (
                   <div className="section">
                     <div className="label">Jobs</div>
-                    <ul>{p.jtbd.jobs.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
+                    <ul>{p.jtbd.jobs.slice(0,4).map((s: unknown,i:number)=><li key={i}>{typeof s==='string'?s:String(s)}</li>)}</ul>
                   </div>
                 )}
                 {Array.isArray(p.jtbd?.selection_criteria) && p.jtbd.selection_criteria.length>0 && (
                   <div className="section">
                     <div className="label">Selection criteria</div>
-                    <ul>{p.jtbd.selection_criteria.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
+                    <ul>{p.jtbd.selection_criteria.slice(0,4).map((s: unknown,i:number)=><li key={i}>{typeof s==='string'?s:String(s)}</li>)}</ul>
                   </div>
                 )}
                 {Array.isArray(p.jtbd?.anxieties) && p.jtbd.anxieties.length>0 && (
                   <div className="section">
                     <div className="label">Anxieties</div>
-                    <ul>{p.jtbd.anxieties.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
+                    <ul>{p.jtbd.anxieties.slice(0,4).map((s: unknown,i:number)=><li key={i}>{typeof s==='string'?s:String(s)}</li>)}</ul>
                   </div>
                 )}
                 {Array.isArray(p.jtbd?.outcomes) && p.jtbd.outcomes.length>0 && (
                   <div className="section">
                     <div className="label">Outcomes (success)</div>
-                    <ul>{p.jtbd.outcomes.slice(0,4).map((s:string,i:number)=><li key={i}>{s}</li>)}</ul>
+                    <ul>{p.jtbd.outcomes.slice(0,4).map((s: unknown,i:number)=><li key={i}>{typeof s==='string'?s:String(s)}</li>)}</ul>
                   </div>
                 )}
               </div>

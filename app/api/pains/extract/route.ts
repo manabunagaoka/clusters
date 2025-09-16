@@ -24,7 +24,11 @@ const CORE_KEYWORDS: Record<CoreId, RegExp[]> = {
   information: [/info|content|find|discover|fragment|where.*find|limited selection/i],
   // risk only when there is lock-in/penalty/contract language (not mere renew/cancel)
   risk:        [/risk|uncertain|lock[-\s]?in|early termination|cancellation penalty|12[-\s]?month|contract/i],
-  support:     [/support|help|service|assist|human available/i],
+  // support must be explicit; avoid generic 'service'/'help'
+    // tighten support to explicit human/customer service cues; avoid generic 'service'
+  // Support: avoid generic 'service' or 'assist' which collide with 'streaming service' etc.
+  // Require explicit user support phrasing
+  support:     [/customer\s+support|technical\s+support|tech\s+support|human\s+support|human\s+help|talk\s+to\s+a\s+(human|person|agent)|live\s+chat|phone\s+support|support\s+(team|agent|staff)/i],
   access:      [/access|coverage|eligib|inclusion|language|bilingual/i],
   // value handles renew/cancel/worth-it language
   value:       [/value|worth|renew|cancel|renewal/i],
