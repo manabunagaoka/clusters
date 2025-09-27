@@ -1,18 +1,19 @@
-export function LoaderDots({ size = 4 }: { size?: number }) {
-  const dot = {
-    display: 'inline-block',
+// LoaderDots (default export) renders three animated dots.
+// Styling is handled globally: .loader-dot plus parent context (e.g. .btn-primary overrides color)
+export default function LoaderDots({ size = 4, 'aria-label': ariaLabel = 'loading' }: { size?: number; 'aria-label'?: string }) {
+  const outer: React.CSSProperties = { display: 'inline-flex', alignItems: 'center' };
+  const base: React.CSSProperties = {
     width: size,
     height: size,
     marginLeft: size,
     borderRadius: '50%',
-    background: 'currentColor',
-    animation: 'pulse 1.2s infinite ease-in-out both',
-  } as const
+    animation: 'pulse 1.1s infinite ease-in-out both'
+  };
   return (
-    <span aria-label="loading" role="status" style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <span style={{ ...dot, animationDelay: '0s' }} />
-      <span style={{ ...dot, animationDelay: '0.2s' }} />
-      <span style={{ ...dot, animationDelay: '0.4s' }} />
+    <span aria-label={ariaLabel} role="status" style={outer}>
+      <span className="loader-dot" style={{ ...base, marginLeft: 0, animationDelay: '0s' }} />
+      <span className="loader-dot" style={{ ...base, animationDelay: '0.2s' }} />
+      <span className="loader-dot" style={{ ...base, animationDelay: '0.4s' }} />
     </span>
-  )
+  );
 }

@@ -121,6 +121,8 @@ export type AppState = {
   busyPS?: boolean
   busyExtract?: boolean
   busyArch?: boolean
+  // Persistable PS draft paragraph (used for Extract)
+  psDraft: string
 
   // Rest of the flow
   notes: string
@@ -142,6 +144,21 @@ export type AppState = {
   profilesSummary?: ProfilesSummary | null
   profilesError?: string
   busyProfiles?: boolean
+
+  // Quality Metrics & Clusters (new deterministic flow)
+  metricsRes?: MetricsResult | null
+  clustersRes?: ClustersResult | null
+  readiness?: Readiness | null
+  busyQC?: boolean
+  // gating flag: themes extracted so Clusters nav can enable
+  themesReady?: boolean
+  // snapshot of extracted PS core themes (for simplified PS page chips)
+  psSnapshot?: { themes: string[] } | null
+  // snapshot of interview matrix rows (used to gate Clusters nav and resets)
+  interviewMatrix?: any[]
+  // explicit gating flags (monotonic within session unless user clears or hard refreshes)
+  psReady?: boolean
+  interviewReady?: boolean
 }
 
 // JTBD Profiles types
@@ -163,6 +180,31 @@ export type JTBDProfile = {
   themes: { core: string[]; facets: string[] }
   theme_weights: Record<string, number>
   jtbd: JTBDFields
+  // NEW — non-math, kept for Insights and display
+  other?: {
+    dependent?: { relation: 'child'|'spouse'|'parent'|'other'; conditions: string[] }
+    language?: string
+    schedule?: string[]          // (legacy – not shown in UI now)
+    household_scope?: string[]   // ['groceries','meal prep','light cleaning']
+    transport?: string[]         // ['school pickup','driving','drop-off']
+    continuity?: string[]        // ['no rotation','same person','part of family','long-term']
+    missed_by_summary?: string[] // up to 3 facts absent from summary
+    // keep?: string[]           // deprecated: no longer rendered
+  }
+
+  // NEW — data quality flags (optional)
+  flags?: {
+    coverage_pct?: number
+    thin_interview?: boolean
+    missing_outcomes?: boolean
+    pricing_misplaced?: boolean
+    solution_bias?: boolean
+  }
+
+  // NEW — review flow
+  approved?: boolean
+  edited?: boolean
+  original?: JTBDProfile    // snapshot for "Reset to Extracted"
 }
 export type ProfilesSummary = { anchor_coverage: { tag: string; count: number }[]; top_emergents: { tag: string; count: number }[] }
 export type ProfilesMatrixRow = [string, Record<string, number>]
@@ -173,3 +215,25 @@ export type ProfilesAPIResponse = {
   note?: string
   theme_universe?: string[]
 }
+
+// ================= Quality Metrics & Clusters types =================
+export type MetricsResult = {
+  coverage: { core_totals: { tag: string; sum: number }[] }
+  completeness: {
+    per_profile: { id: string; who_or_context: boolean; struggle: boolean; workarounds: boolean; jobs: boolean; outcomes: boolean; extras?: unknown }[]
+    overall: Record<'who_or_context' | 'struggle' | 'workarounds' | 'jobs' | 'outcomes', number>
+  }
+  imbalance?: { dominant?: string; ratio?: number; flag?: boolean }
+  warnings?: { solution_bias?: boolean; thin_interviews?: number; thin_fraction?: number; thin_flag?: boolean; low_coverage?: boolean }
+  note?: string
+}
+
+export type ClustersResult = {
+  k_selected: number
+  validity: { silhouette: number; alt: { k: number; silhouette: number }[] }
+  clusters: { id: number; size: number; centroid: Record<string, number>; top_dims: string[]; top_facets: string[]; representatives: string[] }[]
+  assignments: { id: string; cluster: number }[]
+  note?: string
+}
+
+export type Readiness = { overall: number; focus: number; clear: number; action: number }

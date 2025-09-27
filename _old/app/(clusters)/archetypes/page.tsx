@@ -5,17 +5,11 @@ import { RotateCcw } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import type { Summary, PatternCard } from '../lib/types';
 import { canonicalTag } from '../lib/canonical';
+import LoaderDots from '../components/LoaderDots';
 
 const MAX_FAMILIES = 8;  // overlap+emergent unique theme families
 const MAX_PERSONAS  = 6; // max cards
 const MIN_ALIGNED   = 6; // total aligned quotes across cards
-
-function LoaderDots(){
-  const dot: React.CSSProperties = { width:10, height:10, borderRadius:999, background:'#2563eb', animation:'pulse 1.2s infinite ease-in-out' };
-  const d2: React.CSSProperties = { ...dot, animationDelay: '.2s' };
-  const d3: React.CSSProperties = { ...dot, animationDelay: '.4s' };
-  return (<><span style={dot}/><span style={d2}/><span style={d3}/><style>{`@keyframes pulse{0%,80%,100%{opacity:.25}40%{opacity:1}}`}</style></>);
-}
 
 // Button component removed (using raw <button> for Generate to simplify props and avoid lint warnings)
 
@@ -151,8 +145,8 @@ export default function ArchetypesPage(){
           placeholder={`Paste your interview notes in any format. We'll structure them automatically using JTBD (who/struggle/pains/workarounds/outcomes).`}
         />
         <div style={{ marginTop:10, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-          <button className={`btn ${canGenerate ? 'btn-primary' : 'disabled'}`} disabled={!canGenerate} onClick={handleGenerate}>
-            {s.busyArch ? <LoaderDots/> : 'Generate Archetypes'}
+          <button className={`btn btn-primary`} disabled={!canGenerate} onClick={handleGenerate} style={{ opacity: canGenerate ? 1 : .55 }}>
+            {s.busyArch ? <LoaderDots/> : <span className="btn-label">Generate Archetypes</span>}
           </button>
           <button className="btn" title="Clear fields" onClick={()=>{
             set({ notes:'', patterns:[], summary:null, emergent:null, archetypes:[], error: undefined });
@@ -218,12 +212,11 @@ export default function ArchetypesPage(){
       {hasResults && (
         <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:12 }}>
           <button
-            className={`btn ${nextDisabled ? 'disabled' : 'btn-primary'}`}
+            className="btn btn-primary"
             disabled={nextDisabled}
-            onClick={()=> { if(!nextDisabled) location.href='/metrics'; }}
-          >
-            NEXT
-          </button>
+            style={{ opacity: nextDisabled ? .55 : 1 }}
+            onClick={()=> { if(!nextDisabled) location.href='/insights'; }}
+          >NEXT</button>
           <span className="hint" style={{ color: nextDisabled ? '#b45309' : (issues.length ? '#b45309' : '#334155') }}>
             {nextMsg}
           </span>
