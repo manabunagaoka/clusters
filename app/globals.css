@@ -1,0 +1,357 @@
+/* app/globals.css */
+
+/* ---- CSS reset (light) ---- */
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0}
+html,body{height:100%}
+body{line-height:1.5;-webkit-font-smoothing:antialiased}
+img,svg,video,canvas{display:block;max-width:100%}
+input,button,textarea,select{font:inherit}
+
+/* ---- Theme tokens ---- */
+:root{
+  --bg:#f7f8fb;
+  --panel:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e5e7eb;
+
+  --primary:#0284c7;
+  --primary-ink:#ffffff;
+
+  --success-bg:#f0fdf4;
+  --success-border:#bbf7d0;
+  --success-ink:#14532d;
+
+  --warn-bg:#fff7ed;
+  --warn-border:#fed7aa;
+  --warn-ink:#9a3412;
+}
+
+/* ---- App chrome ---- */
+.app-body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji,sans-serif;
+}
+
+/* Layout */
+.app-shell{display:flex;height:calc(100vh - 56px)}
+.sidebar{
+  width:240px;background:#f9fafb;border-right:1px solid var(--border);
+  padding:6px 12px 0;display:flex;flex-direction:column;gap:0;
+  transition:width .2s ease, transform .2s ease
+}
+.brand{
+  font-weight:800;color:#059669;font-size:20px;letter-spacing:.2px;
+}
+.nav{display:grid;gap:6px;flex:1}
+.nav-link{
+  display:block;padding:8px 10px;border-radius:8px;border:1px solid var(--border);
+  color:var(--text);text-decoration:none;background:#fff;
+}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+
+.content{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px
+}
+.main{flex:1;overflow:auto;padding:20px}
+
+/* ---- Primitives ---- */
+.card{
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.03)
+}
+.card-anchor{ border:1px solid var(--success-border); background:var(--success-bg); }
+.card-emergent{ border:1px solid var(--warn-border); background:var(--warn-bg); }
+.green-box{
+  margin-top:10px;background:var(--success-bg);border:1px solid var(--success-border);
+  color:var(--success-ink);border-radius:12px;padding:12px 14px
+}
+.hint{color:var(--muted);font-size:13px}
+.error{color:#b91c1c;font-size:13px}
+
+.input{
+  width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:#fff;margin:4px 0 8px
+}
+.textarea{min-height:120px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid var(--border);border-radius:8px;
+  padding:0 14px;min-height:38px;line-height:1;font-size:14px;font-weight:600;
+  background:#fff;color:var(--text);cursor:pointer;position:relative;white-space:nowrap;
+  transition:background .15s ease,color .15s ease,border-color .15s ease
+}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.btn[disabled],.btn.disabled{opacity:.5;cursor:not-allowed}
+
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid var(--border);
+  border-radius:999px;background:#fff;color:#334155;font-size:12px
+}
+
+.pre{
+  white-space:pre-wrap;background:#fff;border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;min-height:64px
+}
+
+/* Simple grid helper */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Loader keyframes (for LoaderDots if needed globally) */
+@keyframes pulse{0%,80%,100%{opacity:.25}40%{opacity:1}}
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* ===== Readability: labels & placeholders ===== */
+.label {
+  display:block;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+  margin:10px 0 6px;
+}
+.input::placeholder { color:#9aa3b2; }
+
+/* ===== Topbar toggle button ===== */
+.nav-toggle{
+  appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);
+  border-radius:8px;padding:6px 10px;cursor:pointer
+}
+
+/* ===== Mobile sidebar behavior ===== */
+@media (max-width: 768px){
+  .sidebar{
+    position:fixed;left:0;top:56px;height:calc(100vh - 56px);width:260px;z-index:40;
+    transform:translateX(-100%);transition:transform .2s ease;
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .content{ position:relative; }
+  .overlay{
+    position:fixed;top:56px;left:0;right:0;bottom:0;background:rgba(15,23,42,.35);z-index:30;
+  }
+}
+
+/* ===== Pre block hint style ===== */
+.pre-hint{ color:var(--muted); font-size:13px; }
+
+/* ===== Sidebar collapsed (desktop) ===== */
+.sidebar.collapsed{ width:64px }
+.sidebar .brand-row{ display:flex; align-items:center; justify-content:space-between; gap:8px }
+.sidebar .brand{ font-weight:800; color:#059669; font-size:20px; letter-spacing:.2px }
+.sidebar .tagline{ color:#94a3b8; font-size:12px; }
+.sidebar .collapse-btn{
+  appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);
+  border-radius:8px;padding:6px;cursor:pointer;display:flex;align-items:center;justify-content:center
+}
+
+/* Label visibility in collapsed mode */
+.sidebar.collapsed .tagline,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .footer-text { display:none }
+
+/* Nav links show icon + label; center icon when collapsed */
+.nav-link{ display:flex; align-items:center; gap:10px; }
+.nav-icon{ width:18px; height:18px; }
+
+.sidebar.collapsed .nav-link{ justify-content:center; }
+.sidebar.collapsed .nav-icon{ margin:0 }
+
+/* Footer */
+.sidebar-footer{ margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px }
+.footer-text{ color:#94a3b8; font-size:12px }
+
+/* ===== Full-width topbar with left-aligned title ===== */
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-start;padding:0 16px;
+}
+.topbar-title{display:flex;align-items:center;gap:10px}
+.topbar-title .brand-green{color:#059669;font-weight:800;font-size:20px;letter-spacing:.2px}
+.topbar-title .subtitle{color:#64748b;font-weight:600;font-size:14px}
+
+/* ===== Subtle tab style (shared by links and buttons) ===== */
+.nav{display:grid;gap:6px}
+.nav-link{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--text);text-decoration:none;cursor:pointer
+}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+.nav-icon{width:18px;height:18px}
+
+/* Make <button> tabs identical to <a>/<Link> tabs */
+button.nav-link{appearance:none}
+
+/* Collapsed state alignment */
+.sidebar.collapsed{width:64px}
+.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-link{justify-content:center}
+.sidebar.collapsed .nav-icon{margin:0}
+
+/* Bottom account row (subtle) */
+.sidebar-footer{margin-top:auto}
+.sidebar-footer .account-link{opacity:.9}
+.sidebar-footer .account-link:hover{opacity:1}
+/* Mobile drawer stays as-is; hamburger is only on mobile */
+/* Mobile drawer remains as in your build; no duplicate toggles */
+
+/* ===== Full-width topbar with left-aligned title ===== */
+.topbar{
+  height:56px;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:flex-start;padding:0 16px;
+}
+.topbar-title{display:flex;align-items:center;gap:10px}
+.topbar-title .brand-green{color:#059669;font-weight:800;font-size:20px;letter-spacing:.2px}
+.topbar-title .subtitle{color:#64748b;font-weight:600;font-size:14px}
+
+/* ===== Subtle tab style (shared by links and buttons) ===== */
+.nav{display:grid;gap:6px}
+.nav-link{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+  background:#fff;color:var(--text);text-decoration:none;cursor:pointer
+}
+.nav-link.active{background:#eef2ff;border-color:#c7d2fe}
+.nav-icon{width:18px;height:18px}
+
+/* Make <button> tabs identical to <a>/<Link> tabs */
+button.nav-link{appearance:none}
+
+/* Collapsed state alignment */
+.sidebar.collapsed{width:64px}
+.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-link{justify-content:center}
+.sidebar.collapsed .nav-icon{margin:0}
+
+/* Bottom account row (subtle) */
+.sidebar-footer{margin-top:auto}
+.sidebar-footer .account-link{opacity:.9}
+.sidebar-footer .account-link:hover{opacity:1}
+/* Mobile drawer stays as-is; hamburger is only on mobile */
+
+/* ===== New primitives: plain rows, header toggle, separators ===== */
+.plain-row{
+  display:flex;align-items:center;gap:12px;padding:8px 10px;background:transparent;border:none;cursor:pointer;color:var(--text);
+}
+.toggle-row{ height:56px; width:100%; justify-content:flex-start; padding:0 10px }
+.sidebar.collapsed .toggle-row{ justify-content:center }
+.plain-row:focus{outline:none}
+.header-toggle{ appearance:none; border:none; background:transparent; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center }
+.section-sep{ height:1px; background:var(--border); margin:4px 0 }
+
+/* Account row matches header height */
+.account-row{ height:56px; padding:0 10px; display:flex; align-items:center }
+.sidebar.collapsed .account-row{ justify-content:center }
+
+/* ===== Instructions: Flow list styling ===== */
+.flow-list{ list-style:none; counter-reset:flowstep; padding-left:0; margin:0; color:#334155; font-size:14px; line-height:1.6 }
+.flow-list > li{ position:relative; padding-left:32px; margin:6px 0; counter-increment:flowstep }
+.flow-list > li::before{
+  content: counter(flowstep);
+  position:absolute; left:0; top:2px; width:22px; height:22px; border-radius:9999px;
+  background: var(--primary); color: var(--primary-ink);
+  display:inline-flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:12px; line-height:1;
+}
+
+/* Card section title (shared) */
+.card-title{ font-size:18px; font-weight:800; color:var(--text); margin-bottom:8px }
+
+/* Comfortable spacing for nested lists inside flow items */
+.flow-list ul{ margin-top:6px; padding-left:18px }
+
+/* Page heading */
+.page-title{ margin-top:0; font-size:20px; font-weight:800; color:var(--text) }
+
+/* Default card body copy */
+.card-body{ color:#334155; font-size:14px; line-height:1.6 }
+
+/* Inner findings box inside a profile card */
+.findings {
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 14px;
+  margin-top:8px;
+}
+.findings .section { margin-top:8px; }
+.findings .label { font-weight:700; color:#0f172a; font-size:13px; margin-bottom:4px; }
+.findings ul { margin:4px 0 0; padding-left:18px; }
+.findings li { margin:2px 0; }
+.findings .meta { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+
+/* Primary button = brand blue (idle + loading) */
+/* Unify (dedupe) button declaration above; extend primary hover/focus states */
+.btn-primary { background:#0284c7; border-color:#0284c7; color:#fff; }
+.btn:not(.btn-primary):hover:not(:disabled){ background:#f1f5f9 }
+.btn-primary:hover:not(:disabled){ background:#0369a1 }
+.btn:disabled, .btn.disabled { opacity:.55; cursor:not-allowed; }
+
+/* Loader dots styled when used inside buttons */
+/* Loader dots inherit currentColor for contrast; override to specific if needed */
+.btn .loader-dot { background:currentColor; opacity:.85; width:6px; height:6px }
+.btn-primary .loader-dot { background:currentColor }
+
+/* Base loader dot (ensures visibility even if inline styles omitted) */
+.loader-dot { display:inline-block; width:6px; height:6px; border-radius:50%; animation:pulse 1.1s infinite ease-in-out both; }
+
+/* Reserve label space so loader swap doesn't shrink button */
+.btn-label { display:inline-block; line-height:1; }
+.btn-label-hidden { visibility:hidden; }
+
+/* Focus ring for accessibility */
+.btn-primary:focus-visible { outline:2px solid #7dd3fc; outline-offset:2px }
+
+/* Interview bar animation reduced motion safeguard */
+@media (prefers-reduced-motion: reduce) {
+  .bar { transition: none !important; }
+  .bar-count { transition: none !important; }
+}
+
+/* Interview chart scroll positioning (account for header) */
+.themes-chart { scroll-margin-top: 72px; }

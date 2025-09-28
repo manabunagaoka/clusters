@@ -1,0 +1,116 @@
+/* Two-area layout for Rings */
+.ringsLayout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  column-gap: 20px;
+  align-items: center;
+}
+
+/* Wheel container (left on desktop, top on mobile) */
+.ringCanvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* constrain wheel to a square; JS will size the SVG inside */
+  max-width: 420px;
+  width: 100%;
+}
+
+/* Right panel with findings + chips + legend */
+.ringPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Setup card styles */
+.setupCard { position: relative; }
+.setupActions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+/* Results header (non-sticky) */
+.resultsHeader { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:8px 0 12px; }
+.resultsHeaderLeft, .resultsHeaderRight { display:flex; align-items:center; gap:8px; }
+
+/* ensures anchors land just below any fixed app header */
+.scrollAnchor { scroll-margin-top: var(--app-header-offset, 72px); }
+
+.topControls { display:flex; align-items:center; gap:10px; margin:8px 0 12px; }
+
+/* New setup card & compact styles */
+.setupCard { background: var(--card-bg,#fff); border-radius:12px; padding:12px 16px; margin:8px 0 12px; }
+.noteWrap { color: var(--muted-fg,#475569); font-size:13px; line-height:1.35; }
+.actionsRow { display:flex; align-items:center; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08); }
+.resultsWrap { margin-top:8px; }
+@media (max-width:640px){
+  .actionsRow { flex-wrap:wrap; gap:8px 10px; }
+}
+
+/* New setup card & collapsing note */
+.setupCard { background: var(--card-bg,#fff); border-radius:12px; padding:12px 16px; margin:8px 0 12px; }
+.noteWrap { color: var(--muted-fg,#475569); font-size:13px; line-height:1.35; transition: height 200ms ease, opacity 150ms ease; overflow:hidden; }
+.noteCollapsed { height:0 !important; opacity:0 !important; pointer-events:none; }
+.actionsRow { display:flex; align-items:center; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.08); }
+@media (max-width:640px){
+  .actionsRow { flex-wrap:wrap; gap:8px 10px; }
+}
+
+/* Summary fade-in */
+.summaryText { opacity:0; transition: opacity 320ms ease; }
+.fadeIn { opacity:1; }
+@media (prefers-reduced-motion: reduce){
+  .summaryText { opacity:1; transition:none; }
+}
+
+/* Rings card layout (new spec) */
+.ringsWrap {
+  display: grid;
+  grid-template-columns: min(520px, 45%) 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.ringCanvas { /* override earlier max-width for new layout */
+  max-width: 520px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.ringPanel { /* extend existing */
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+@media (max-width: 768px) {
+  .ringsWrap { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .ringPanel { padding-top:8px; }
+}
+
+@media (max-width: 640px) {
+  .resultsHeader { flex-direction:column; align-items:stretch; }
+  .resultsHeaderLeft { justify-content:center; }
+  .resultsHeaderRight { justify-content:flex-end; }
+  .setupActions { justify-content:flex-start; }
+}
+
+/* Mobile: stack wheel on top half and panel on bottom half */
+@media (max-width: 640px) {
+  .ringsLayout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;   /* top half (wheel), bottom half (panel) */
+    min-height: 80vh;              /* ensures both halves are visible */
+    row-gap: 12px;
+  }
+  .ringCanvas {
+    max-width: none;
+    align-self: stretch;
+    /* keep the wheel comfortable in the top half */
+    max-height: 48vh;
+  }
+  .ringPanel {
+    align-self: stretch;
+    overflow: auto;                /* scroll inside the bottom half if chips overflow */
+    padding-bottom: 4px;
+  }
+}
