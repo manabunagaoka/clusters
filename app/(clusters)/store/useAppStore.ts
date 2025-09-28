@@ -171,11 +171,38 @@ export const useAppStore = create<AppState & {
       // Reset outputs but do NOT pre-populate psDraft; animation will stream into psDraft from component effect.
       set({ busyPS: true, psText: '', psTags: [], psWarnings: undefined, psBlocked: false, psJustGenerated: false });
       try {
+        // Lightweight normalization helpers (scoped here to avoid broad changes elsewhere)
+        const cleanFragment = (s: string): string => {
+          let out = (s || '').trim();
+          // Remove surrounding quotes/backticks and smart quotes
+          out = out.replace(/^['"“”`\u2018\u2019]+/g, '').replace(/['"“”`\u2018\u2019]+$/g, '');
+          // Collapse internal whitespace
+          out = out.replace(/\s+/g, ' ');
+          // Lowercase accidental ALL CAPS words except obvious acronyms (<=3 chars)
+          out = out.split(' ').map(w => (w.length > 3 && /^[A-Z]{3,}$/.test(w) ? w[0] + w.slice(1).toLowerCase() : w)).join(' ');
+          return out;
+        };
+        const sentence = (raw: string): string => {
+          let s = cleanFragment(raw);
+          if (!s) return '';
+          // Ensure starting capital
+            s = s.charAt(0).toUpperCase() + s.slice(1);
+          // Remove trailing duplicate punctuation
+          s = s.replace(/[\.?!]+$/g, '');
+          return s + '.';
+        };
+
         const res = await fetchJsonSafe<{ problemStatement: string }>(
           '/api/generate-problem',
           { method: 'POST', body: JSON.stringify({ projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess }) }
         );
-        const fallback = `${wizWho} are trying to make progress on “${wizStruggle}”. They currently ${wizCurrent}. What’s not working is that ${wizGap}. Success looks like ${wizSuccess}.`;
+        // Build deterministic fallback (model failure or empty response)
+        const fallback = [
+          sentence(`${wizWho} are trying to make progress on "${cleanFragment(wizStruggle)}"`),
+          sentence(`They currently ${cleanFragment(wizCurrent)}`),
+          sentence(`What’s not working is ${cleanFragment(wizGap)}`),
+          sentence(`Success looks like ${cleanFragment(wizSuccess)}`)
+        ].filter(Boolean).join(' ');
         const text = res.ok && res.data?.problemStatement ? res.data.problemStatement : fallback;
         const sameAsDraft = (psDraft || '') === (text || '');
         set({ psText: text, psJustGenerated: !sameAsDraft });
