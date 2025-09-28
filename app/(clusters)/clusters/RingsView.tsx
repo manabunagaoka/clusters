@@ -102,15 +102,14 @@ export default function RingsView({ matrixAtRun, clustersRunId }: RingsProps) {
           );
         })}
 
-        {/* Progress arcs: path starts at 12 o'clock (M 0 -r). Animate strokeDasharray segment from 0 -> finalLen */}
+  {/* Progress arcs: path starts at 12 o'clock (M 0 -r). We want growth CLOCKWISE. By default a path stroke draws along the path direction (which for our two-arc circle is clockwise for first half then continues). Using dashoffset decreasing currently gave a counter-direction visual. We flip by reversing the dashoffset baseline and applying a rotate(180) scale(-1,1) was overkill; instead we set strokeDasharray to full length and animate from full offset -> target offset while also reversing path direction via a path definition with reversed arc sweep flag when needed. Simpler: keep path but compute dashOffset baseline as -C so animation visually proceeds clockwise. */}
         {CORES.map((core, i) => {
           const r = OUTER - (RINGS - 1 - i) * (T + G) - T / 2;
-          const C = 2 * Math.PI * r; // theoretical circumference
           const frac = Math.max(0, Math.min(1, progress[core]));
           const color = (CORE_COLORS as any)[core] || '#64748b';
-          // We render full circle path and set strokeDasharray to full length; animate dashoffset from full -> full*(1-frac).
-          const dashArray = C;
-          const dashOffset = armed ? (1 - frac) * C : C;
+          // Normalize path length to 1 so strokeDasharray can be expressed as fractional values.
+          const visible = armed ? frac : 0;
+          const remainder = 1 - visible;
           return (
             <path
               key={`arc-${clustersRunId || 'static'}-${core}`}
@@ -121,10 +120,11 @@ export default function RingsView({ matrixAtRun, clustersRunId }: RingsProps) {
               fill="none"
               vectorEffect="non-scaling-stroke"
               shapeRendering="geometricPrecision"
-              strokeDasharray={dashArray}
-              strokeDashoffset={dashOffset}
+              pathLength={1}
+              strokeDasharray={`${visible} ${remainder}`}
+              strokeDashoffset={0}
               style={{
-                transition: prefersReducedMotion ? undefined : 'stroke-dashoffset 820ms cubic-bezier(.4,.0,.2,1)',
+                transition: prefersReducedMotion ? undefined : 'stroke-dasharray 820ms cubic-bezier(.4,.0,.2,1)',
                 transitionDelay: prefersReducedMotion ? undefined : `${i * 40}ms`
               }}
               aria-label={`${core}: ${Math.round(frac * 100)} percent`}

@@ -3,7 +3,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
-import type { AppState, Archetype, Analysis, Insights, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse, MetricsResult, ClustersResult, Readiness } from '../lib/types'
+import type { AppState, Archetype, Analysis, Insights, NarrativeInsights, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse, MetricsResult, ClustersResult, Readiness } from '../lib/types'
+import { buildNarrative } from '../lib/narrativeEngine'
 
 // Disable persistence so a full browser refresh/dev restart yields a fresh session
 const PERSIST = false;
@@ -375,7 +376,21 @@ export const useAppStore = create<AppState & {
     canRunQC() { const s = get(); return Array.isArray(s.profiles) && s.profiles.length > 0; },
 
     async getInsights() {
-      const state = get()
+      const state = get();
+      // Prefer local narrative synthesis; fall back to legacy API/stub if clusters evidence unavailable
+      try {
+  const psThemes = (state.psSnapshot?.themes || state.psTags.map((t: { tag: string })=> t.tag) || []).map((t: string)=> t.toLowerCase());
+        const matrix: Array<[string, Record<string, number>]> = Array.isArray(state.profilesMatrix) && state.profilesMatrix.length
+          ? (state.profilesMatrix as any)
+          : (Array.isArray(state.interviewMatrix) ? state.interviewMatrix as any : []);
+        const narrative = buildNarrative({ clustersRes: state.clustersRes, psThemes, matrix });
+        if (narrative) {
+          set({ insights: narrative as unknown as Insights });
+          return;
+        }
+      } catch (e) {
+        // swallow and fallback
+      }
       const res = await fetchJsonSafe<Insights>('/api/insights', { method: 'POST', body: JSON.stringify({ state }) })
       const data = res.ok && res.data ? res.data : stubInsights(state)
       set({ insights: data })
@@ -407,7 +422,11 @@ export const useAppStore = create<AppState & {
     },
     canSeeInsights() {
       const s = get();
-      return !!(s.psText && (s.psTags?.length||0) > 0 && s.clustersRes);
+      const hasProblemStatement = (
+        (s.psText && (s.psTags?.length || 0) > 0) ||
+        (s.psSnapshot?.themes && s.psSnapshot.themes.length > 0)
+      );
+      return !!(hasProblemStatement && s.clustersRes);
     },
     // Hard reset: clears PS/Interview/Clusters slice for dev clean start
     __resetProject: () => set({
@@ -674,9 +693,20 @@ export const useAppStore = create<AppState & {
       canRunQC() { const s = get(); return Array.isArray(s.profiles) && s.profiles.length > 0; },
 
       async getInsights() {
-        const state = get()
+        const state = get();
+        try {
+          const psThemes = (state.psSnapshot?.themes || state.psTags.map((t: { tag: string })=> t.tag) || []).map((t: string)=> t.toLowerCase());
+          const matrix: Array<[string, Record<string, number>]> = Array.isArray(state.profilesMatrix) && state.profilesMatrix.length
+            ? (state.profilesMatrix as any)
+            : (Array.isArray(state.interviewMatrix) ? state.interviewMatrix as any : []);
+          const narrative = buildNarrative({ clustersRes: state.clustersRes, psThemes, matrix });
+          if (narrative) {
+            set({ insights: narrative as unknown as Insights });
+            return;
+          }
+        } catch {}
         const res = await fetchJsonSafe<Insights>('/api/insights', { method: 'POST', body: JSON.stringify({ state }) })
-  const data = res.ok && res.data ? res.data : stubInsights(state)
+        const data = res.ok && res.data ? res.data : stubInsights(state)
         set({ insights: data })
       },
 
@@ -700,7 +730,14 @@ export const useAppStore = create<AppState & {
 
       canGoArchetypes() { const s = get(); return !!s.psText && (s.psTags?.length || 0) > 0 },
       canRunAnalysis() { const s = get(); return (Array.isArray(s.patterns) ? s.patterns.length : (s.archetypes?.length || 0)) > 0 },
-  canSeeInsights() { const s = get(); return !!(s.psText && (s.psTags?.length||0) > 0 && s.clustersRes); },
+  canSeeInsights() {
+        const s = get();
+        const hasProblemStatement = (
+          (s.psText && (s.psTags?.length || 0) > 0) ||
+          (s.psSnapshot?.themes && s.psSnapshot.themes.length > 0)
+        );
+        return !!(hasProblemStatement && s.clustersRes);
+      },
       // Hard reset: clears PS/Interview/Clusters slice for dev clean start
       __resetProject: () => set({
         psSnapshot: null,

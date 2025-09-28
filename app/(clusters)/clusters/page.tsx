@@ -202,8 +202,9 @@ export default function Page(){
       <div className={styles.setupCard}>
         <div className={styles.noteWrap}>
           <strong>Form clusters to compare customer themes</strong><br/>
-          <em>Graph</em>: groups interviews & ranks alignment.<br/>
-          <em>Rings</em>: frequency of each core theme.
+          The algorithm groups interviews by similar theme weight patterns so you can see natural segments before you over‑narrow the problem.<br/>
+          <em>Graph</em>: each card = a cluster with its dominant themes & Problem Statement alignment indicator.<br/>
+          <em>Rings</em>: a frequency view showing how often each core theme appears across all interviews (breadth vs focus).
         </div>
         <div className={cx(styles.actionsRow, styles.scrollAnchor)} ref={actionsRef}>
           {/* 1) Form Clusters */}

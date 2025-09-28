@@ -1,7 +1,8 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useTypeStream } from '../lib/useTypeStream';
 import { CORE_IDS } from '../lib/psRules';
 import { useAppStore } from '../store/useAppStore';
 import CoreChip from '../components/CoreChip';
@@ -43,22 +44,18 @@ export default function Page(){
   // Live typing will update psDraft directly; no overlay block
 
   // One-shot typing AFTER Generate PS; no auto-typing on page load
-  useEffect(() => {
-    if (!psJustGenerated) return;
-    const target = psText || '';
-    let i = 0;
-    // Reset textarea then type into it directly
-    setPsDraft('');
-    const id = setInterval(() => {
-      i++;
-      setPsDraft(target.slice(0, i));
-      if (i >= target.length) {
-        clearInterval(id);
-        ackPSAnimation();
-      }
-    }, 12);
-    return () => clearInterval(id);
-  }, [psJustGenerated, psText, ackPSAnimation, setPsDraft]);
+  // Reset draft at the moment a new generation is flagged
+  useEffect(()=> { if (psJustGenerated) setPsDraft(''); }, [psJustGenerated, setPsDraft]);
+
+  // Unified streaming typewriter (same style as Insights)
+  useTypeStream({
+    text: psText || '',
+    active: !!psJustGenerated,
+    speed: 80, // chars per second
+    chunk: 3,
+    onProgress: (slice)=> setPsDraft(slice),
+    onDone: () => ackPSAnimation()
+  });
 
   const showHint = !s.busyPS && !s.psText && !s.psJustGenerated;
 
@@ -109,6 +106,15 @@ export default function Page(){
   const coreThemes = (s.psSnapshot?.themes || []);
   const canNext = coreThemes.length > 0 && !s.psBlocked;
 
+  const textareaRef = useRef<HTMLTextAreaElement|null>(null);
+
+  // Auto-grow textarea to fit content
+  useEffect(()=>{
+    const el = textareaRef.current; if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(600, el.scrollHeight) + 'px';
+  },[psDraft]);
+
   return (
     <section>
       <h2 className="page-title">Problem Statement</h2>
@@ -145,11 +151,12 @@ export default function Page(){
         {/* Editable PS textarea bound to store (persists across navigation). Types live during generation. */}
         <label className="label" style={{ marginTop:10 }}>Problem Statement (editable)</label>
         <textarea
+          ref={textareaRef}
           className="input textarea"
           value={psDraft}
           onChange={(e)=> setPsDraft(e.target.value)}
           placeholder="Type or paste your problem statement here..."
-          style={{ minHeight: 96 }}
+          style={{ minHeight: 96, overflow:'hidden', resize:'none', transition:'height 120ms ease' }}
           disabled={psJustGenerated}
         />
 

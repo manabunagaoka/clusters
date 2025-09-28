@@ -103,6 +103,18 @@ export type Insights = {
   whyThisMakesSense: string
 }
 
+// New richer narrative insights output (superset produced by narrative engine)
+export type NarrativeInsights = Insights & {
+  status: 'early' | 'validating' | 'pivot_signal' | 'fragmented' | 'focused'
+  confidence: 'low' | 'medium' | 'high'
+  validatedThemes: string[]
+  gaps: string[]
+  emergent: string[]
+  earlySignals: string[]
+  // evidence is intentionally not typed here to avoid import cycle; attach separately if needed
+  evidence?: unknown
+}
+
 export type AppState = {
   // Wizard fields
   title: string
