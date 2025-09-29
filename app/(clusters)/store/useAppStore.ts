@@ -197,29 +197,36 @@ export const useAppStore = create<AppState & {
         const asClause = (s: string) => phrase(s).replace(/[\.?!]+$/,'');
         const lowerFirst = (s:string) => s ? s.charAt(0).toLowerCase() + s.slice(1) : s;
         const buildDeterministicPS = () => {
-          const who = asClause(wizWho);
-          const struggle = asClause(wizStruggle);
-          const current = asClause(wizCurrent);
-          const gap = asClause(wizGap);
-          const success = asClause(wizSuccess);
-          // Heuristics: avoid repeating subject if user already wrote plural noun phrase starting with same word
-          const whoSubject = /^(the |these |those )/i.test(who) ? who : who.replace(/\.$/, '');
-          // Core 3-sentence shape
-          // Sentence 1: Who + core struggle
-          const s1 = `${whoSubject} are struggling with "${struggle}".`
-            .replace(/\s+/g,' ') // collapse spaces
-            .replace(/\bAre\b/, 'are')
-            .replace(/^([a-z])/, (m)=>m.toUpperCase());
-          // Sentence 2: Current workaround + what's not working
-          const s2 = `They currently ${lowerFirst(current)}. What’s breaking down is ${lowerFirst(gap)}.`
-            .replace(/\s+/g,' ')
-            .replace(/\. What’s breaking down is\s*\./,' .');
-          // Sentence 3: Desired success outcome
-          const s3 = `Success means ${lowerFirst(success)}.`.replace(/\s+/g,' ');
-          return [s1,s2,s3]
-            .map(t=>t.replace(/\s+\./g,'.')
-              .replace(/\.+$/,'.'))
-            .join(' ');
+          const norm = (s:string) => (s||'').trim().replace(/\s+/g,' ').replace(/^["'“”`]+|["'“”`]+$/g,'');
+          const who = norm(wizWho);
+          const struggle = norm(wizStruggle).replace(/\.$/,'');
+          const current = norm(wizCurrent).replace(/\.$/,'').replace(/^they\s+/i,'');
+          const gap = norm(wizGap).replace(/\.$/,'').replace(/^they\s+/i,'');
+          const success = norm(wizSuccess).replace(/\.$/,'').replace(/^they\s+/i,'');
+          const project = norm(title);
+          // Upgrade awkward pattern phrases
+          const whoClean = who
+            .replace(/\bwho had hired or thinking of hiring\b/i,'who have hired or are considering hiring')
+            .replace(/\bwho had hired or are thinking of hiring\b/i,'who have hired or are considering hiring')
+            .replace(/\bhad hired or thinking of hiring\b/i,'have hired or are considering hiring')
+            .replace(/\bhad hired\b/i,'have hired');
+          const firstWord = (whoClean.match(/^[A-Za-z]+/)||[''])[0];
+          const they = 'They';
+          const sentences: string[] = [];
+          if (project) sentences.push(`The project "${project}" targets ${whoClean}.`);
+          else sentences.push(`${whoClean.charAt(0).toUpperCase()}${whoClean.slice(1)}.`);
+          if (struggle) sentences.push(`${they} struggle with ${struggle}.`);
+          if (current) sentences.push(`${they} currently ${current}.`);
+          if (gap) {
+            const gapIntro = /^(because|but|however|yet)\b/i.test(gap) ? gap : `However, ${gap}`;
+            sentences.push(`${gapIntro}.`);
+          }
+          if (success) sentences.push(`Success would mean ${success}.`);
+          return sentences
+            .map(s=> s.replace(/\s+\./g,'.').replace(/[\.?!]+$/,'.'))
+            .join(' ')
+            .replace(/\s{2,}/g,' ') // collapse any residual doubles
+            .trim();
         };
 
         const res = await fetchJsonSafe<{ problemStatement: string }>(
