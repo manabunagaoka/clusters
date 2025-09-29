@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { buildProblemStatement, looksLowQuality } from '@/app/(clusters)/lib/psBuilder';
 
 function lowerCommonNounsMidSentence(text: string) {
   // Only lowercase these when they appear inside a sentence (not first token of a sentence)
@@ -21,20 +22,7 @@ export async function POST(req: NextRequest) {
     const cap = (s:string) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
     const ensurePeriod = (s:string) => s.replace(/[\.?!]+$/,'') + '.';
     const pn = norm(projectName);
-    const whoN = norm(who);
-    const struggleN = norm(struggle);
-    const currentN = norm(current);
-    const gapN = norm(gap);
-    const successN = norm(success);
-    // Pre-deployment style: include project sentence + flow of struggle -> current -> challenge -> success
-    const fallback = [
-      pn ? ensurePeriod(`The project "${pn}" targets ${whoN}`) : ensurePeriod(cap(whoN)),
-      ensurePeriod(`These ${/parents|users|customers|buyers|subscribers|students/i.test(whoN) ? whoN.split(' ')[0].toLowerCase()+whoN.slice(whoN.split(' ')[0].length) : 'individuals'} struggle with ${struggleN}`)
-        .replace(/^These the /i,'These '),
-      ensurePeriod(`Currently, they ${currentN.replace(/^they\s+/i,'')}`),
-      ensurePeriod(`However, ${gapN.startsWith('they ') ? gapN : gapN}`),
-      ensurePeriod(`Success would mean ${successN}`)
-    ].filter(Boolean).join(' ');
+    const fallback = buildProblemStatement({ projectName, who, struggle, current, gap, success });
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ problemStatement: fallback }, { status: 200 });
@@ -66,11 +54,16 @@ Requirements:
     const raw = resp.choices?.[0]?.message?.content?.trim() || '';
 
     // Post-pass: conservative mid-sentence common-noun lowercasing
-    let polished = lowerCommonNounsMidSentence(raw || fallback);
-    // If model output is suspiciously short or omits project name when provided, revert to fallback
-    if (polished.length < 80 || (pn && !polished.includes(pn))) {
-      polished = fallback;
+    let candidate = lowerCommonNounsMidSentence(raw || fallback).replace(/\s{2,}/g,' ').trim();
+    if (!candidate) candidate = fallback;
+    if (looksLowQuality(candidate, { projectName, who, struggle, current, gap, success })) {
+      candidate = fallback;
+    } else if (pn && !candidate.includes(pn)) {
+      // If project name provided but stripped, prepend intro sentence from fallback
+      const fbFirst = fallback.split(/(?<=\.)\s+/)[0];
+      candidate = fbFirst + ' ' + candidate;
     }
+    const polished = candidate;
 
     return NextResponse.json({ problemStatement: polished }, { status: 200 });
   } catch (e) {

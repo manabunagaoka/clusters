@@ -5,6 +5,7 @@ import { fetchJsonSafe } from '../lib/net'
 import { canonicalTag, humanizeTag } from '../lib/canonical'
 import type { AppState, Archetype, Analysis, Insights, NarrativeInsights, PatternCard, Summary, LegacyArchetype, ArchetypeAPIResponse, ProfilesAPIResponse, MetricsResult, ClustersResult, Readiness } from '../lib/types'
 import { buildNarrative } from '../lib/narrativeEngine'
+import { buildProblemStatement, looksLowQuality } from '../lib/psBuilder'
 
 // Disable persistence so a full browser refresh/dev restart yields a fresh session
 const PERSIST = false;
@@ -572,8 +573,14 @@ export const useAppStore = create<AppState & {
             '/api/generate-problem',
             { method: 'POST', body: JSON.stringify({ projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess }) }
           );
-          const fallback = `${wizWho} are trying to make progress on “${wizStruggle}”. They currently ${wizCurrent}. What’s not working is that ${wizGap}. Success looks like ${wizSuccess}.`;
-          const text = res.ok && res.data?.problemStatement ? res.data.problemStatement : fallback;
+          const deterministic = buildProblemStatement({ projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess });
+          let text = res.ok && res.data?.problemStatement ? res.data.problemStatement : deterministic;
+          if (looksLowQuality(text, { projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess })) {
+            text = deterministic;
+          }
+          // Final normalization: single spaces & terminal period
+          text = text.replace(/\s+/g,' ').trim();
+          if (!/[.!?]$/.test(text)) text += '.';
           const sameAsDraft = (psDraft || '') === (text || '');
           set({ psText: text, psJustGenerated: !sameAsDraft });
         } finally {
