@@ -192,18 +192,53 @@ export const useAppStore = create<AppState & {
           return s + '.';
         };
 
+        // Deterministic structured builder (independent of model)
+        const phrase = (s: string) => (s || '').trim().replace(/^["'“”`]+|["'“”`]+$/g,'');
+        const asClause = (s: string) => phrase(s).replace(/[\.?!]+$/,'');
+        const lowerFirst = (s:string) => s ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+        const buildDeterministicPS = () => {
+          const who = asClause(wizWho);
+          const struggle = asClause(wizStruggle);
+          const current = asClause(wizCurrent);
+          const gap = asClause(wizGap);
+          const success = asClause(wizSuccess);
+          // Heuristics: avoid repeating subject if user already wrote plural noun phrase starting with same word
+          const whoSubject = /^(the |these |those )/i.test(who) ? who : who.replace(/\.$/, '');
+          // Core 3-sentence shape
+          // Sentence 1: Who + core struggle
+          const s1 = `${whoSubject} are struggling with "${struggle}".`
+            .replace(/\s+/g,' ') // collapse spaces
+            .replace(/\bAre\b/, 'are')
+            .replace(/^([a-z])/, (m)=>m.toUpperCase());
+          // Sentence 2: Current workaround + what's not working
+          const s2 = `They currently ${lowerFirst(current)}. What’s breaking down is ${lowerFirst(gap)}.`
+            .replace(/\s+/g,' ')
+            .replace(/\. What’s breaking down is\s*\./,' .');
+          // Sentence 3: Desired success outcome
+          const s3 = `Success means ${lowerFirst(success)}.`.replace(/\s+/g,' ');
+          return [s1,s2,s3]
+            .map(t=>t.replace(/\s+\./g,'.')
+              .replace(/\.+$/,'.'))
+            .join(' ');
+        };
+
         const res = await fetchJsonSafe<{ problemStatement: string }>(
           '/api/generate-problem',
           { method: 'POST', body: JSON.stringify({ projectName: title, who: wizWho, struggle: wizStruggle, current: wizCurrent, gap: wizGap, success: wizSuccess }) }
         );
-        // Build deterministic fallback (model failure or empty response)
-        const fallback = [
-          sentence(`${wizWho} are trying to make progress on "${cleanFragment(wizStruggle)}"`),
-          sentence(`They currently ${cleanFragment(wizCurrent)}`),
-          sentence(`What’s not working is ${cleanFragment(wizGap)}`),
-          sentence(`Success looks like ${cleanFragment(wizSuccess)}`)
-        ].filter(Boolean).join(' ');
-        const text = res.ok && res.data?.problemStatement ? res.data.problemStatement : fallback;
+        // Prefer model output if present, but re-sanitize & fallback to deterministic builder
+        let text = res.ok && res.data?.problemStatement ? res.data.problemStatement : buildDeterministicPS();
+        // If model echoed project name or raw inputs verbatim, override with deterministic version
+        const rawWhoStart = (wizWho||'').slice(0,30).toLowerCase();
+        if (/^\s*"?\s*$/.test(text) || text.length < 40) {
+          text = buildDeterministicPS();
+        } else if (text.toLowerCase().startsWith(rawWhoStart)) {
+          // The model sometimes just repeats the 'who' phrase; prefer structured version
+          text = buildDeterministicPS();
+        }
+        // Final polish: remove double spaces, ensure terminal period
+        text = text.replace(/\s+/g,' ').trim();
+        if (!/[.!?]$/.test(text)) text += '.';
         const sameAsDraft = (psDraft || '') === (text || '');
         set({ psText: text, psJustGenerated: !sameAsDraft });
       } finally {
