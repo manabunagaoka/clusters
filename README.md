@@ -1,8 +1,85 @@
-Here’s a **consolidated, ready-to-paste README.md** that merges your current doc with the ABAC/Insights contracts and the refinements Copilot suggested. Drop it in as-is.
+<!--
+	NOTE (2025-09-29): Top section added to record the September refactor & deployment cycle.
+	Keeps historical record of: PS builder unification, narrative engine, guardrails, build adjustments, and integration touchpoints.
+	Older README body retained below (acts as broader product + API spec).
+-->
+
+# Clusters — JTBD Student Edition (MVP)
+
+## Recent Engineering Log (September 2025)
+
+| Date | Change | Rationale | Notes / Impact |
+|------|--------|-----------|----------------|
+| Sep 21–24 | Removed legacy Metrics step from UI flow | Simplify student journey (Problem → Themes → Interview Themes → Clusters/Insights) | Metric concepts deferred until matrix stabilized |
+| Sep 22 | Narrative engine (Insights draft) prototype | Deterministic 5‑paragraph structure with anchor dominance & quote validation | Avoids hallucinations; selective quotes only if validated in source |
+| Sep 23 | Ring animation corrected (clockwise from 12 o'clock) | Visual clarity + consistency | Uses pathLength=1 + fractional strokeDasharray |
+| Sep 24 | Theme chip tokenization refinements | Ensure displaced themes still render as chips | Regex + boundary safe splitting |
+| Sep 25 | Build unblock (Vercel) | ESLint & `_old` TS noise blocked deploy | Added `eslint.ignoreDuringBuilds`, excluded `_old` in `tsconfig.json` (temporary debt) |
+| Sep 26–27 | Problem Statement (PS) fallback regressions identified | Production lacked `OPENAI_API_KEY` → low quality ad‑hoc fallback | Duplicated phrasing, tense mismatch, missing project context |
+| Sep 27 | Deterministic PS builder (initial) | Provide structured, grammar‑stable output without model | Introduced order: project → struggle → current → gap → success |
+| Sep 28 | Centralization: `psBuilder.ts` + quality gate | Eliminate drift between client & API fallbacks | `looksLowQuality` heuristic to override weak model/fallback outputs |
+| Sep 29 | Linguistic normalization expansion | Match pre‑deployment “natural” style | Added article insertion, merging gap clause, acronym expansion (ECD), trust phrasing |
+
+### Problem Statement Builder (Deterministic)
+File: `app/(clusters)/lib/psBuilder.ts`
+
+Core responsibilities:
+1. Normalize wizard raw inputs (strip quotes, collapse whitespace, unify tenses).
+2. Rewrite common awkward patterns (e.g., “can not trust … but cannot afford …” → “trust issues regarding … while also finding … unaffordable”).
+3. Merge certain gap sentences into the current workaround when semantically dependent ("Everyone has different needs…" → appended clause).
+4. Expand acronyms (ECD → early childhood development) and enforce hyphenation (worry‑free).
+5. Provide consistent deterministic paragraph when no model output or when model output is flagged low quality.
+
+Heuristics (`looksLowQuality`):
+* Short text (<80 chars)
+* Echo starts with raw `who` fragment
+* Known repeated awkward tokens (historic regression patterns)
+
+Future extension candidates:
+* Switch “Success would mean” → “Success means” (toggle by style flag)
+* Add acronym registry (JSON) for domain expansions
+* Optional sentence compression when current+gap < 140 chars
+
+### Narrative Engine (Insights – groundwork)
+Deterministic 5‑paragraph scaffold (anchor evaluation, selective quote injection, displaced theme tokenization). Guardrails: anchor dominance threshold, regex context validation, small‑N caution paragraphs, falsification guidance.
+
+### Guardrails & Quality Measures
+* Solution bias filter (PS theme extraction excludes solution sentences)
+* Small‑N cluster caution (silhouette + N threshold; defers narrative flourish)
+* Quote inclusion only when exact, validated snippet present
+* Theme chip tokenization robust to punctuation & reordering
+* Readiness computation: composite of clarity, focus, actionability (metrics placeholder)
+
+### Deployment / Ops Notes
+* Temporary: `eslint.ignoreDuringBuilds = true` (remove after lint debt cleanup)
+* `_old` directory excluded in `tsconfig.json` to silence stray types
+* Deterministic PS builder eliminates dependency on `OPENAI_API_KEY` for baseline quality; model becomes optional enhancer
+* All new logic centralized to prevent fallback drift (previous root cause of duplicated sentences in production)
+
+### Integration Touchpoints (manaboodle.com Ecosystem)
+| Layer | Contract | Integration Guidance |
+|-------|----------|----------------------|
+| Problem Statement | `POST /api/generate-problem` (internal) now unified with builder | Upstream systems can rely on stable paragraph shape (≤5 sentences) |
+| Theme Extraction | `POST /api/pains/extract` | Returns 2–4 universal cores + warnings; safe for direct UI chips |
+| Interview Themes | `POST /api/themes` | Produces `matrix` + `display`; feeds metrics/clusters |
+| Metrics (upcoming) | `POST /api/metrics` (spec in README) | Downstream readiness scoring; keep shape stable for analytics embedding |
+| Clusters (upcoming) | `POST /api/clusters` (spec) | Deterministic; can be cached by hash of matrix JSON |
+| Insights (upcoming) | `POST /api/insights` (spec) | Data-first; narrative optional wrapper outside core computations |
+
+### Known Debt / Follow-ups
+* Re-enable ESLint during build; resolve suppressed warnings
+* Extract acronym & phrase rewrite rules into external JSON for easier domain extension
+* Add config module (`config.ts`) to expose interview max & sentence caps (pre‑Pro mode foundation)
+* Unit-lite tests (string fixture → expected PS output) for `psBuilder` to lock grammar rewrites
+* Restore metrics & clusters pages after theme-only pipeline stabilization
 
 ---
 
-# Clusters — JTBD Student Edition (MVP)
+<!-- Original comprehensive README begins below -->
+
+Here’s a **consolidated, ready-to-paste README.md** that merges earlier doc with the ABAC/Insights contracts and refinements. (Historical preface retained.)
+
+---
 
 > **Purpose** — Help students move from a clear **Problem Statement (PS)** → **JTBD Profiles** → **Metrics & Clusters** → **Insights**.
 > **Philosophy** — Deterministic, explainable math for structure (ABAC over core themes); LLMs only for light normalization + faithful narrative rewrites (no creative clustering or hallucinated strategy).
