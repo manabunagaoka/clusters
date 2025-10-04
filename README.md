@@ -4,7 +4,7 @@
 	Older README body retained below (acts as broader product + API spec).
 -->
 
-# Clusters — JTBD Student Edition (MVP)
+# Clusters — JTBD Student Edition (MVP) by Manaboodle
 
 ## Recent Engineering Log (September 2025)
 
