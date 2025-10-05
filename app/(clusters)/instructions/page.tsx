@@ -12,7 +12,7 @@ export default function Page(){
         <div className={styles.cardTitle}>What Clusters Is</div>
         <div className={styles.bodyText}>
           Clusters is the first intelligent tool powered by <b>Manaboodle’s Synchronicity Engine</b>. It’s designed to uncover synchronistic moments where the “dots” connect and form meaningful clusters.
-          The <b>JTBD Student Edition (MVP)</b> is built to help you validate business ideas and refine them using the <b><a href="https://www.christenseninstitute.org/theory/jobs-to-be-done/?gad_source=1&gad_campaignid=22404177831&gbraid=0AAAAADsapT_jd8RaeyuwwRgSbrGGYEswV&gclid=CjwKCAjwuePGBhBZEiwAIGCVS6McI11ceCYIQ3NQ-eKUqEihYwnwfHNkIQ6rBSasHBQosOkmfupZyxoCPJMQAvD_BwE" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>Jobs-To-Be-Done (JTBD)</a></b> framework. JTBD helps you shift your focus away from solutions you imagine and toward the real problems customers struggle with.
+          The <b>JTBD Student Edition (MVP) by Manaboodle</b> is built to help you validate business ideas and refine them using the <b><a href="https://www.christenseninstitute.org/theory/jobs-to-be-done/?gad_source=1&gad_campaignid=22404177831&gbraid=0AAAAADsapT_jd8RaeyuwwRgSbrGGYEswV&gclid=CjwKCAjwuePGBhBZEiwAIGCVS6McI11ceCYIQ3NQ-eKUqEihYwnwfHNkIQ6rBSasHBQosOkmfupZyxoCPJMQAvD_BwE" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>Jobs-To-Be-Done (JTBD)</a></b> framework. JTBD helps you shift your focus away from solutions you imagine and toward the real problems customers struggle with.
         </div>
       </div>
 

@@ -78,7 +78,7 @@ export default function ClustersLayout({ children }:{ children:React.ReactNode }
         </button>
         <div className="topbar-title" style={{ marginLeft: 8 }}>
           <span className="brand-green">Clusters</span>
-          <span className="subtitle">JTBD Student Edition (MVP)</span>
+          <span className="subtitle">JTBD Student Edition (MVP) by Manaboodle</span>
         </div>
       </header>
 
