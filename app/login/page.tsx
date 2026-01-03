@@ -10,7 +10,8 @@ function LoginPageContent() {
   const handleLogin = () => {
     const origin = window.location.origin;
     const callbackUrl = `${origin}/api/sso-callback?redirect_to=${encodeURIComponent(redirectTo)}`;
-    const loginUrl = `https://www.manaboodle.com/academic-portal/login?return_url=${encodeURIComponent(callbackUrl)}&app_name=Clusters`;
+    // Use /sso/login which checks for existing sessions and auto-redirects if already logged in
+    const loginUrl = `https://www.manaboodle.com/sso/login?return_url=${encodeURIComponent(callbackUrl)}&app_name=Clusters`;
     window.location.href = loginUrl;
   };
 
