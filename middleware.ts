@@ -110,10 +110,16 @@ export async function middleware(request: NextRequest) {
   
   // For all other paths, require authentication
   if (!token) {
-    console.log('[CLUSTERS MIDDLEWARE] No token, redirecting to login');
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect_to', pathname);
-    return NextResponse.redirect(loginUrl);
+    console.log('[CLUSTERS MIDDLEWARE] No token, redirecting to SSO');
+    // Redirect DIRECTLY to Manaboodle SSO - this checks for existing session
+    const callbackUrl = new URL('/api/sso-callback', request.url);
+    callbackUrl.searchParams.set('redirect_to', pathname);
+    
+    const ssoUrl = new URL('/sso/login', MANABOODLE_BASE_URL);
+    ssoUrl.searchParams.set('return_url', callbackUrl.toString());
+    ssoUrl.searchParams.set('app_name', APP_NAME);
+    
+    return NextResponse.redirect(ssoUrl);
   }
   
   // Verify token and inject user headers
@@ -143,17 +149,31 @@ export async function middleware(request: NextRequest) {
       }
     }
     
-    // Invalid token, redirect to login
-    console.log('[CLUSTERS MIDDLEWARE] Invalid token, redirecting to login');
-    const response = NextResponse.redirect(new URL('/login', request.url));
+    // Invalid token, redirect to SSO
+    console.log('[CLUSTERS MIDDLEWARE] Invalid token, redirecting to SSO');
+    
+    const callbackUrl = new URL('/api/sso-callback', request.url);
+    callbackUrl.searchParams.set('redirect_to', pathname);
+    
+    const ssoUrl = new URL('/sso/login', MANABOODLE_BASE_URL);
+    ssoUrl.searchParams.set('return_url', callbackUrl.toString());
+    ssoUrl.searchParams.set('app_name', APP_NAME);
+    
+    const response = NextResponse.redirect(ssoUrl);
     response.cookies.delete('manaboodle_sso_token');
     response.cookies.delete('manaboodle_sso_refresh');
     return response;
   } catch (error) {
     console.error('[CLUSTERS MIDDLEWARE] Error verifying token:', error);
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect_to', pathname);
-    return NextResponse.redirect(loginUrl);
+    
+    const callbackUrl = new URL('/api/sso-callback', request.url);
+    callbackUrl.searchParams.set('redirect_to', pathname);
+    
+    const ssoUrl = new URL('/sso/login', MANABOODLE_BASE_URL);
+    ssoUrl.searchParams.set('return_url', callbackUrl.toString());
+    ssoUrl.searchParams.set('app_name', APP_NAME);
+    
+    return NextResponse.redirect(ssoUrl);
   }
 }
 
