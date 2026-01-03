@@ -1,5 +1,9 @@
 /* app/globals.css */
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ---- CSS reset (light) ---- */
 *,*::before,*::after{box-sizing:border-box}
 *{margin:0}
