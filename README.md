@@ -6,7 +6,20 @@
 
 # Clusters — JTBD Student Edition (MVP) by Manaboodle
 
-## Recent Engineering Log (September 2025)
+**🔐 Authentication**: This application uses [Manaboodle Academic Portal SSO](https://www.manaboodle.com/academic-portal). Users must have a registered Harvard .edu account to access.
+
+**🌐 Production URL**: `https://clusters.manaboodle.com/` (custom domain via SSO integration)
+
+## Recent Engineering Log
+
+### January 2026 - SSO Integration
+| Date | Change | Rationale | Notes / Impact |
+|------|--------|-----------|----------------|
+| Jan 3 | Manaboodle SSO authentication | Centralized auth across academic tools | Middleware-based, JWT verification, secure httpOnly cookies |
+| Jan 3 | Account page redesign | User profile + navigation options | Shows user info, link to portal, sign out |
+| Jan 3 | Custom domain preparation | `clusters.manaboodle.com` | DreamHost CNAME → Vercel, SSL auto-provisioned |
+
+### September 2025 - Core Features
 
 | Date | Change | Rationale | Notes / Impact |
 |------|--------|-----------|----------------|
