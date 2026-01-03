@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import * as React from 'react';
 
 function LoginPageContent() {
   const searchParams = useSearchParams();
@@ -14,6 +15,15 @@ function LoginPageContent() {
     const loginUrl = `https://www.manaboodle.com/sso/login?return_url=${encodeURIComponent(callbackUrl)}&app_name=Clusters`;
     window.location.href = loginUrl;
   };
+  
+  // Auto-trigger SSO on page load for seamless experience
+  // This shows the branded page briefly, then checks for existing session
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      handleLogin();
+    }, 1500); // Show branded page for 1.5 seconds
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#334155] flex items-center justify-center p-4">
