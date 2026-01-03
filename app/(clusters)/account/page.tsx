@@ -1,4 +1,4 @@
-import { getUser, getLogoutUrl } from '../lib/auth';
+import { getUser } from '../lib/auth';
 import Link from 'next/link';
 import { User, ExternalLink, Home, LogOut } from 'lucide-react';
 
@@ -6,7 +6,6 @@ export default async function Page() {
   const user = await getUser();
   const manaboodleUrl = process.env.NEXT_PUBLIC_MANABOODLE_URL || 'https://www.manaboodle.com';
   const academicPortalUrl = `${manaboodleUrl}/academic-portal`;
-  const logoutUrl = getLogoutUrl(typeof window !== 'undefined' ? window.location.origin : undefined);
 
   return (
     <section>
@@ -91,7 +90,7 @@ export default async function Page() {
               </a>
 
               <a
-                href={logoutUrl}
+                href="/api/logout"
                 className="plain-row account-row"
                 style={{
                   display: 'flex',
